@@ -1,0 +1,43 @@
+{% extends "help/base_help.html" %}
+{% block help_content %}
+{% if current_user.role == 'admin' %}
+<div class="card">
+  <h2 class="section-title">Generate Release Note</h2>
+  <form method="post" action="{{ url_for('help.generate_release_note') }}" class="stack">
+    <div class="form-grid">
+      <input type="text" name="title" placeholder="Release title" required>
+      <select name="release_type">
+        <option value="patch">Patch</option>
+        <option value="minor" selected>Minor</option>
+        <option value="major">Major</option>
+      </select>
+    </div>
+    <div>
+      <label class="label">Summary (Markdown)</label>
+      <textarea name="summary_markdown" rows="8" required placeholder="- Added foundation feature&#10;- Updated onboarding flow"></textarea>
+    </div>
+    <div><button type="submit" class="btn btn-primary">Create Release Note</button></div>
+  </form>
+</div>
+{% endif %}
+
+<div class="stack">
+  {% for note in notes %}
+  <div class="card">
+    <div class="section-title-row">
+      <div>
+        <h2 class="section-title">v{{ note.version_string }} · {{ note.title }}</h2>
+        <div class="muted">{{ note.release_type }} release · {{ note.created_at.strftime('%Y-%m-%d') }}</div>
+      </div>
+      <span class="badge">{{ note.release_type }}</span>
+    </div>
+    <pre class="release-markdown">{{ note.summary_markdown }}</pre>
+  </div>
+  {% else %}
+  <div class="card">
+    <p class="muted">No release notes yet.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+

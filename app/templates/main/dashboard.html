@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - saas-vanilla{% endblock %}
+{% block page_heading %}Dashboard{% endblock %}
+{% block content %}
+<div class="stats-grid">
+  {% for label, value in [
+    ('Users', stats.users),
+    ('Roles', stats.roles),
+    ('LLM Models', stats.models),
+    ('Integrations', stats.integrations),
+    ('Attributes', stats.attributes),
+    ('Release Notes', stats.releases),
+  ] %}
+  <div class="card stat-card">
+    <div class="stat-label">{{ label }}</div>
+    <div class="stat-value">{{ value }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2 class="section-title">Platform Activity</h2>
+  <p class="muted">This starter dashboard is intentionally lightweight. As new SaaS prototypes branch from this template, you can replace these cards with domain-specific KPIs and workflows.</p>
+</div>
+
+<div class="card">
+  <h2 class="section-title">Recent Release Notes</h2>
+  {% if recent_releases %}
+  <table>
+    <thead>
+      <tr>
+        <th>Version</th>
+        <th>Type</th>
+        <th>Title</th>
+        <th>Created</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for note in recent_releases %}
+      <tr>
+        <td>v{{ note.version_string }}</td>
+        <td><span class="badge">{{ note.release_type }}</span></td>
+        <td>{{ note.title }}</td>
+        <td>{{ note.created_at.strftime('%Y-%m-%d') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No release notes generated yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
+

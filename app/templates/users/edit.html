@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Add User' if not user else 'Edit User' }} - saas-vanilla{% endblock %}
+{% block page_heading %}{{ 'Add User' if not user else 'Edit User' }}{% endblock %}
+{% block content %}
+<div class="card form-card">
+  <form method="post" class="stack">
+    <div class="form-grid">
+      <div>
+        <label class="label">First Name</label>
+        <input type="text" name="first_name" value="{{ request.form.get('first_name', user.first_name if user else '') }}">
+      </div>
+      <div>
+        <label class="label">Last Name</label>
+        <input type="text" name="last_name" value="{{ request.form.get('last_name', user.last_name if user else '') }}">
+      </div>
+      <div>
+        <label class="label">Username</label>
+        <input type="text" name="username" required value="{{ request.form.get('username', user.username if user else '') }}">
+      </div>
+      <div>
+        <label class="label">Email</label>
+        <input type="email" name="email" required value="{{ request.form.get('email', user.email if user else '') }}">
+      </div>
+      <div>
+        <label class="label">{{ 'New Password' if user else 'Password' }}</label>
+        <input type="password" name="password" {% if not user %}required{% endif %}>
+      </div>
+      <div>
+        <label class="label">Role</label>
+        <select name="role">
+          {% for role in roles %}
+          <option value="{{ role }}" {% if request.form.get('role', user.role if user else 'member') == role %}selected{% endif %}>{{ role }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="page-actions">
+      <button type="submit" class="btn btn-primary">Save</button>
+      <a href="{{ url_for('users.list_users') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% if user and current_user.role == 'admin' %}
+<div class="card form-card">
+  <div class="stack-sm">
+    <h2 class="section-title">Replace Avatar</h2>
+    <form method="post" action="{{ url_for('users.upload_avatar', user_id=user.id) }}" enctype="multipart/form-data" class="stack-sm">
+      <input type="file" name="avatar" accept=".jpg,.jpeg,.png,.gif,.webp">
+      <div>
+        <button type="submit" class="btn btn-secondary btn-sm">Upload Avatar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

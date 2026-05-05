@@ -1,0 +1,116 @@
+{% from "macros/user_avatar.html" import avatar %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}saas-vanilla{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">SV</div>
+        <div>
+          <div class="brand-title">saas-vanilla</div>
+          <div class="brand-subtitle">Prototype foundation</div>
+        </div>
+      </div>
+
+      <nav class="nav-section">
+        <div class="nav-label">General</div>
+        <a href="{{ url_for('main.dashboard') }}" class="nav-link">Dashboard</a>
+      </nav>
+
+      {% if has_access('users', 'view') or has_access('permissions', 'view') %}
+      <nav class="nav-section">
+        <div class="nav-label">User Management</div>
+        {% if has_access('users', 'view') %}<a href="{{ url_for('users.list_users') }}" class="nav-link">Users</a>{% endif %}
+        {% if has_access('permissions', 'view') %}<a href="{{ url_for('users.list_users') }}#permissions" class="nav-link">Permissions</a>{% endif %}
+      </nav>
+      {% endif %}
+
+      {% if has_access('models', 'view') or has_access('attributes', 'view') or has_access('integrations', 'view') %}
+      <nav class="nav-section">
+        <div class="nav-label">System Config</div>
+        <a href="{{ url_for('models.list_models') }}" class="nav-link">LLM Models</a>
+        <a href="{{ url_for('models.list_models') }}#attributes" class="nav-link">Attributes</a>
+        <a href="{{ url_for('models.list_models') }}#integrations" class="nav-link">Integrations</a>
+      </nav>
+      {% endif %}
+
+      {% if has_access('help', 'view') %}
+      <nav class="nav-section">
+        <div class="nav-label">Help</div>
+        <a href="{{ url_for('help.release_notes') }}" class="nav-link">Release Notes</a>
+        <a href="{{ url_for('help.quick_start') }}" class="nav-link">Quick Start Guide</a>
+        <a href="{{ url_for('help.user_manual') }}" class="nav-link">User Manual</a>
+        <a href="{{ url_for('help.architecture') }}" class="nav-link">Architecture</a>
+        <a href="{{ url_for('help.dependencies') }}" class="nav-link">Python Dependencies</a>
+      </nav>
+      {% endif %}
+    </aside>
+
+    <main class="main-shell">
+      <header class="topbar">
+        <div>
+          <h1 class="page-heading">{% block page_heading %}saas-vanilla{% endblock %}</h1>
+          {% if breadcrumbs %}
+          <div class="breadcrumbs">
+            {% for crumb in breadcrumbs %}
+              {% if crumb.url %}
+              <a href="{{ crumb.url }}">{{ crumb.label }}</a>
+              {% else %}
+              <span>{{ crumb.label }}</span>
+              {% endif %}
+              {% if not loop.last %}<span>&gt;</span>{% endif %}
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+
+        {% if current_user.is_authenticated %}
+        <details class="user-menu">
+          <summary>
+            {{ avatar(current_user, 'md') }}
+          </summary>
+          <div class="user-menu-panel">
+            <div class="user-menu-header">
+              {{ avatar(current_user, 'lg') }}
+              <div>
+                <div class="user-name">{{ current_user.display_name }}</div>
+                <div class="user-meta">{{ current_user.role }}</div>
+                <div class="user-meta">{{ current_user.email }}</div>
+              </div>
+            </div>
+            <form method="post" action="{{ url_for('users.upload_avatar_self') }}" enctype="multipart/form-data" class="stack-sm">
+              <label class="label">Replace Avatar</label>
+              <input type="file" name="avatar" accept=".jpg,.jpeg,.png,.gif,.webp">
+              <button type="submit" class="btn btn-secondary btn-sm">Upload</button>
+            </form>
+            <a href="{{ url_for('users.change_password') }}" class="btn btn-secondary btn-sm full-width">Change Password</a>
+            <form method="post" action="{{ url_for('auth.logout') }}">
+              <button type="submit" class="btn btn-danger btn-sm full-width">Logout</button>
+            </form>
+          </div>
+        </details>
+        {% endif %}
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-stack">
+          {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>
+

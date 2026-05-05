@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - saas-vanilla</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-body">
+  <div class="login-card">
+    <div class="login-kicker">Reusable SaaS foundation</div>
+    <h1>Welcome to saas-vanilla</h1>
+    <p>Sign in to manage the platform, configure integrations, and launch your next prototype.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="flash-stack">
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+
+    <form method="post" class="stack">
+      <div>
+        <label class="label" for="username">Username</label>
+        <input id="username" name="username" type="text" required autofocus>
+      </div>
+      <div>
+        <label class="label" for="password">Password</label>
+        <input id="password" name="password" type="password" required>
+      </div>
+      <button type="submit" class="btn btn-primary full-width">Sign In</button>
+    </form>
+
+    <div class="login-footer">
+      Default admin: <strong>admin</strong> / <strong>Changeme-123</strong>
+    </div>
+  </div>
+</body>
+</html>
+

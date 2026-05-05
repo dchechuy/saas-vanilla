@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Help - saas-vanilla{% endblock %}
+{% block page_heading %}Help{% endblock %}
+{% block content %}
+<div class="help-tabs">
+  <a href="{{ url_for('help.release_notes') }}" class="help-tab {% if active_tab == 'release_notes' %}active{% endif %}">Release Notes</a>
+  <a href="{{ url_for('help.quick_start') }}" class="help-tab {% if active_tab == 'quick_start' %}active{% endif %}">Quick Start Guide</a>
+  <a href="{{ url_for('help.user_manual') }}" class="help-tab {% if active_tab == 'user_manual' %}active{% endif %}">User Manual</a>
+  <a href="{{ url_for('help.architecture') }}" class="help-tab {% if active_tab == 'architecture' %}active{% endif %}">Architecture</a>
+  <a href="{{ url_for('help.dependencies') }}" class="help-tab {% if active_tab == 'dependencies' %}active{% endif %}">Python Dependencies</a>
+</div>
+{% block help_content %}{% endblock %}
+{% endblock %}
+
