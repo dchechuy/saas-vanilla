@@ -1,0 +1,15 @@
+[Unit]
+Description=saas-vanilla Flask application
+After=network.target
+
+[Service]
+User=skunkbox
+Group=www-data
+WorkingDirectory=/home/skunkbox/saas-vanilla
+Environment="PATH=/home/skunkbox/saas-vanilla/.venv/bin"
+ExecStart=/home/skunkbox/saas-vanilla/.venv/bin/gunicorn --workers 2 --bind unix:/home/skunkbox/saas-vanilla/saas-vanilla.sock wsgi:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+

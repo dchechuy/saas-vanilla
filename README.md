@@ -31,3 +31,28 @@ Default admin account:
 - Password: `Changeme-123`
 
 The app will prompt the admin to change the password after first login.
+
+## Deployment
+
+The repo includes a template `deploy.sh` for the server workflow:
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+What it does:
+
+- creates `.venv` if missing
+- installs `requirements.txt`
+- runs `flask db upgrade` when a `migrations/` folder exists
+- installs the included systemd service file
+- reloads and restarts the `saas-vanilla` service
+
+Included production files:
+
+- `deploy.sh`
+- `deploy/saas-vanilla.service`
+- `wsgi.py`
+
+Before using on a server, update `deploy/saas-vanilla.service` paths and user names to match that server.
