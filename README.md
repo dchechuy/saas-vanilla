@@ -23,10 +23,11 @@ cp .env.example .env
 python run.py
 ```
 
+Default local URL: `http://127.0.0.1:5011`
+
 Default admin account:
 
 - Username: `admin`
 - Password: `Changeme-123`
 
 The app will prompt the admin to change the password after first login.
-

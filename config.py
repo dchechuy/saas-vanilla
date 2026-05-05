@@ -11,6 +11,6 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "sqlite:///" + os.path.join(BASE_DIR, "instance", "app.db"))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY", "")
+    PORT = int(os.environ.get("PORT", "5011"))
     AVATAR_UPLOAD_FOLDER = os.path.join(BASE_DIR, "app", "static", "uploads", "avatars")
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024
-
