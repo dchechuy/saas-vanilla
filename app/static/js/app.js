@@ -10,12 +10,6 @@ document.addEventListener("DOMContentLoaded", () => {
     navHashLinks.forEach((link) => {
       const matches = link.dataset.dsNavHash === current;
       link.classList.toggle("active", matches);
-      if (!matches && link.dataset.dsNavHash.endsWith("#llm-models") && window.location.pathname === "/models/" && !window.location.hash) {
-        link.classList.add("active");
-      }
-      if (!matches && link.dataset.dsNavHash.endsWith("#permissions") && window.location.pathname === "/users/" && !window.location.hash) {
-        link.classList.remove("active");
-      }
     });
   };
 
@@ -55,10 +49,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (pathname === "/models/") {
       const defaultModelsLink = document.querySelector('[data-ds-nav-hash$="#llm-models"]');
       if (defaultModelsLink) {
+        navHashLinks.forEach((link) => link.classList.remove("active"));
         defaultModelsLink.classList.add("active");
       }
     }
     if (pathname === "/users/") {
+      navHashLinks.forEach((link) => link.classList.remove("active"));
       const usersLink = document.querySelector('a[href="/users/"]:not([data-ds-nav-hash])');
       if (usersLink) {
         usersLink.classList.add("active");

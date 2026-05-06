@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons@latest/iconfont/tabler-icons.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -25,77 +26,99 @@
             </div>
           </div>
         </div>
-        <div class="navbar-nav flex-column">
-          <div class="nav-section">
+        <ul class="navbar-nav pt-3">
+          <li class="nav-section">
             <div class="nav-label">General</div>
+          </li>
+          <li class="nav-item">
             <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
-              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('dashboard') }}</span>
+              <span class="nav-link-icon">{{ icon('dashboard') }}</span>
               <span class="nav-link-title">Dashboard</span>
             </a>
-          </div>
+          </li>
 
           {% if has_access('users', 'view') or has_access('permissions', 'view') %}
-          <div class="nav-section">
+          <li class="nav-section">
             <div class="nav-label">User Management</div>
+          </li>
             {% if has_access('users', 'view') %}
+            <li class="nav-item">
             <a href="{{ url_for('users.list_users') }}" class="nav-link {% if request.endpoint in ['users.list_users', 'users.add_user', 'users.edit_user', 'users.change_password'] %}active{% endif %}">
-              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('users') }}</span>
+              <span class="nav-link-icon">{{ icon('users') }}</span>
               <span class="nav-link-title">Users</span>
             </a>
+            </li>
             {% endif %}
             {% if has_access('permissions', 'view') %}
+            <li class="nav-item">
             <a href="{{ url_for('users.list_users') }}#permissions" class="nav-link" data-ds-nav-hash="{{ url_for('users.list_users') }}#permissions">
-              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('shield') }}</span>
+              <span class="nav-link-icon">{{ icon('shield') }}</span>
               <span class="nav-link-title">Permissions</span>
             </a>
+            </li>
             {% endif %}
-          </div>
           {% endif %}
 
           {% if has_access('models', 'view') or has_access('attributes', 'view') or has_access('integrations', 'view') %}
-          <div class="nav-section">
+          <li class="nav-section">
             <div class="nav-label">System Config</div>
-            <a href="{{ url_for('models.list_models') }}#llm-models" class="nav-link {% if request.endpoint == 'models.list_models' %}active{% endif %}" data-ds-nav-hash="{{ url_for('models.list_models') }}#llm-models">
-              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('brain') }}</span>
+          </li>
+            <li class="nav-item">
+            <a href="{{ url_for('models.list_models') }}#llm-models" class="nav-link" data-ds-nav-hash="{{ url_for('models.list_models') }}#llm-models">
+              <span class="nav-link-icon">{{ icon('brain') }}</span>
               <span class="nav-link-title">LLM Models</span>
             </a>
+            </li>
+            <li class="nav-item">
             <a href="{{ url_for('models.list_models') }}#attributes" class="nav-link" data-ds-nav-hash="{{ url_for('models.list_models') }}#attributes">
-              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('tags') }}</span>
+              <span class="nav-link-icon">{{ icon('tags') }}</span>
               <span class="nav-link-title">Attributes</span>
             </a>
+            </li>
+            <li class="nav-item">
             <a href="{{ url_for('models.list_models') }}#integrations" class="nav-link" data-ds-nav-hash="{{ url_for('models.list_models') }}#integrations">
-              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('plug') }}</span>
+              <span class="nav-link-icon">{{ icon('plug') }}</span>
               <span class="nav-link-title">Integrations</span>
             </a>
-          </div>
+            </li>
           {% endif %}
 
           {% if has_access('help', 'view') %}
-          <div class="nav-section">
+          <li class="nav-section">
             <div class="nav-label">Help</div>
+          </li>
+            <li class="nav-item">
             <a href="{{ url_for('help.release_notes') }}" class="nav-link {% if request.endpoint == 'help.release_notes' %}active{% endif %}">
-              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('sparkles') }}</span>
+              <span class="nav-link-icon">{{ icon('sparkles') }}</span>
               <span class="nav-link-title">Release Notes</span>
             </a>
+            </li>
+            <li class="nav-item">
             <a href="{{ url_for('help.quick_start') }}" class="nav-link {% if request.endpoint == 'help.quick_start' %}active{% endif %}">
-              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('rocket') }}</span>
+              <span class="nav-link-icon">{{ icon('rocket') }}</span>
               <span class="nav-link-title">Quick Start Guide</span>
             </a>
+            </li>
+            <li class="nav-item">
             <a href="{{ url_for('help.user_manual') }}" class="nav-link {% if request.endpoint == 'help.user_manual' %}active{% endif %}">
-              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('book') }}</span>
+              <span class="nav-link-icon">{{ icon('book') }}</span>
               <span class="nav-link-title">User Manual</span>
             </a>
+            </li>
+            <li class="nav-item">
             <a href="{{ url_for('help.architecture') }}" class="nav-link {% if request.endpoint == 'help.architecture' %}active{% endif %}">
-              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('settings') }}</span>
+              <span class="nav-link-icon">{{ icon('settings') }}</span>
               <span class="nav-link-title">Architecture</span>
             </a>
+            </li>
+            <li class="nav-item">
             <a href="{{ url_for('help.dependencies') }}" class="nav-link {% if request.endpoint == 'help.dependencies' %}active{% endif %}">
-              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('circle-check') }}</span>
+              <span class="nav-link-icon">{{ icon('circle-check') }}</span>
               <span class="nav-link-title">Python Dependencies</span>
             </a>
-          </div>
+            </li>
           {% endif %}
-        </div>
+        </ul>
       </div>
     </aside>
 
