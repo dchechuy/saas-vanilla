@@ -14,15 +14,39 @@ This means:
 
 ### 1. Use tokens, not ad-hoc colors
 
-Prefer the local custom properties in `app/static/css/style.css`:
+Always use the CSS custom properties defined in `app/static/css/style.css`. Never hardcode hex
+values — that breaks dark mode.
 
-- `--ds-ink`
-- `--ds-muted`
-- `--ds-bg`
-- `--ds-panel`
-- `--ds-accent`
-- `--ds-accent-2`
-- `--ds-ring`
+**Full token reference:**
+
+| Token | Light | Dark | Usage |
+|---|---|---|---|
+| `--text` | `#1a1a2e` | `#e5edf9` | Body text, headings |
+| `--muted` | `#64748b` | `#9fb0ca` | Secondary text, labels |
+| `--bg` | `#f5f6fa` | `#0f172a` | Page background |
+| `--panel` | `#ffffff` | `#111827` | Cards, modals, sidebar content |
+| `--panel-muted` | `#f8fafc` | `#172033` | Subtle panel backgrounds |
+| `--border` | `#e2e8f0` | `#263247` | Card borders, dividers |
+| `--border-soft` | `#f1f5f9` | `#1f2937` | Subtle separators |
+| `--accent` | `#4361ee` | `#7aa2ff` | Links, buttons, active states |
+| `--accent-strong` | `#3730a3` | `#a5bffb` | Hover/pressed accent |
+| `--sidebar` | `#1a1a2e` | `#0b1220` | Sidebar background |
+| `--sidebar-hover` | `#2d2d4e` | `#172033` | Sidebar item hover |
+| `--sidebar-text` | `#c8cfe8` | `#d6def2` | Sidebar nav labels |
+| `--sidebar-muted` | `#6f7696` | `#7b87a5` | Sidebar section headers |
+| `--success-bg` | `#dcfce7` | `#10301f` | Success flash backgrounds |
+| `--success-text` | `#166534` | `#86efac` | Success flash text |
+| `--danger-bg` | `#fee2e2` | `#3a1517` | Error flash backgrounds |
+| `--danger-text` | `#991b1b` | `#fca5a5` | Error flash text |
+
+Example usage:
+```css
+.my-component {
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+}
+```
 
 ### 2. Favor shared macros
 

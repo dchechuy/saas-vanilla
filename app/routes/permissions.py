@@ -33,8 +33,8 @@ def add_role():
 @login_required
 @permission_required("permissions", "edit")
 def save_role(role_id):
-    role = Role.query.get_or_404(role_id)
-    if role.is_system:
+    role = db.get_or_404(Role, role_id)
+    if role.is_protected:
         flash("System roles cannot be modified.", "error")
         return redirect(url_for("users.list_users") + "#permissions")
 
@@ -72,11 +72,11 @@ def save_role(role_id):
 @login_required
 @permission_required("permissions", "edit")
 def delete_role(role_id):
-    if current_user.role != "admin":
+    if not current_user.is_admin():
         return redirect(url_for("main.dashboard"))
 
-    role = Role.query.get_or_404(role_id)
-    if role.is_system:
+    role = db.get_or_404(Role, role_id)
+    if role.is_protected:
         flash("System roles cannot be deleted.", "error")
     elif User.query.filter_by(role=role.name).count() > 0:
         flash("Reassign users before deleting this role.", "error")
@@ -85,4 +85,3 @@ def delete_role(role_id):
         db.session.commit()
         flash(f"Role '{role.name}' deleted.", "success")
     return redirect(url_for("users.list_users") + "#permissions")
-

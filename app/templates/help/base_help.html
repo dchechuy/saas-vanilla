@@ -2,7 +2,7 @@
 {% block title %}Help - saas-vanilla{% endblock %}
 {% block page_heading %}Help{% endblock %}
 {% block content %}
-<div class="nav nav-pills mb-4 flex-wrap">
+<div class="nav nav-pills mb-4 flex-wrap ds-tab-strip">
   <a href="{{ url_for('help.release_notes') }}" class="nav-link {% if active_tab == 'release_notes' %}active{% endif %}">Release Notes</a>
   <a href="{{ url_for('help.quick_start') }}" class="nav-link {% if active_tab == 'quick_start' %}active{% endif %}">Quick Start Guide</a>
   <a href="{{ url_for('help.user_manual') }}" class="nav-link {% if active_tab == 'user_manual' %}active{% endif %}">User Manual</a>

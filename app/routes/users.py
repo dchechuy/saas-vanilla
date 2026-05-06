@@ -6,6 +6,7 @@ from flask_login import current_user, login_required
 from ..access import permission_required
 from ..extensions import db
 from ..models import Role, User
+from ..page_registry import PAGES
 
 users_bp = Blueprint("users", __name__, url_prefix="/users")
 
@@ -28,6 +29,7 @@ def list_users():
         users=users,
         roles=roles,
         user_counts=user_counts,
+        pages=PAGES,
         breadcrumbs=[
             {"label": "Home", "url": url_for("main.dashboard")},
             {"label": "User Management", "url": None},
@@ -75,7 +77,7 @@ def add_user():
 @login_required
 @permission_required("users", "edit")
 def edit_user(user_id):
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     roles = _role_names()
     if request.method == "POST":
         username = request.form.get("username", "").strip()
@@ -138,7 +140,7 @@ def change_password():
 @login_required
 @permission_required("users", "edit")
 def toggle_user(user_id):
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     if user.id == current_user.id:
         flash("You cannot deactivate your own account.", "error")
     else:
@@ -181,9 +183,9 @@ def _save_avatar(user: User) -> None:
 @login_required
 @permission_required("users", "edit")
 def upload_avatar(user_id):
-    if current_user.role != "admin":
+    if not current_user.is_admin():
         abort(403)
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     _save_avatar(user)
     return redirect(url_for("users.edit_user", user_id=user_id))
 

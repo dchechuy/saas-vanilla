@@ -20,11 +20,16 @@ class User(UserMixin, db.Model):
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     must_change_password = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    last_login = db.Column(db.DateTime, nullable=True)
 
     @property
     def display_name(self) -> str:
         full_name = " ".join(part for part in [self.first_name, self.last_name] if part)
         return full_name or self.username
+
+    def is_admin(self) -> bool:
+        return self.role == "admin"
 
     def set_password(self, password: str) -> None:
         self.password_hash = generate_password_hash(password)
@@ -40,8 +45,13 @@ class Role(db.Model):
     name = db.Column(db.String(80), unique=True, nullable=False)
     is_system = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     permissions = db.relationship("Permission", backref="role", cascade="all, delete-orphan")
+
+    @property
+    def is_protected(self) -> bool:
+        return self.name.lower() == "admin"
 
     def get_permission(self, page_slug: str) -> str:
         for permission in self.permissions:
@@ -76,6 +86,7 @@ class LlmModel(db.Model):
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     is_default = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
 class Attribute(db.Model):
@@ -138,4 +149,3 @@ def next_version(release_type: str, latest: ReleaseNote | None) -> tuple[int, in
     if release_type == "patch":
         return (major, minor, patch + 1)
     return (major, minor + 1, 0)
-

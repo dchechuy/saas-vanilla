@@ -1,158 +1,208 @@
 {% extends "base.html" %}
-{% from "macros/ui.html" import empty_state, page_header %}
-{% block title %}System Config - saas-vanilla{% endblock %}
-{% block page_heading %}System Config{% endblock %}
+{% from "macros/ui.html" import empty_state %}
+{% block title %}Administration - saas-vanilla{% endblock %}
+{% block page_heading %}Administration{% endblock %}
 {% block content %}
-{{ page_header(
-  "System Configuration",
-  "Platform Controls",
-  "Define the reusable AI and operations layer for future projects: models, business attributes, and third-party integrations."
-) }}
 
-<ul class="nav nav-pills mb-4" data-ds-hash-tabs>
-  <li class="nav-item">
-    <a href="#llm-models" class="nav-link active" data-bs-toggle="tab">LLM Models</a>
-  </li>
-  <li class="nav-item">
-    <a href="#attributes" class="nav-link" data-bs-toggle="tab">Attributes</a>
-  </li>
-  <li class="nav-item">
-    <a href="#integrations" class="nav-link" data-bs-toggle="tab">Integrations</a>
-  </li>
-</ul>
+{% if can_view_models or can_view_integrations %}
+<div id="config-tab-integrations">
+  {% set show_model_registry = can_view_models %}
+  {% set show_third_party = can_view_integrations %}
 
-<div class="tab-content">
-  <div class="tab-pane active show" id="llm-models">
-    <div class="card mb-4">
-      <div class="card-header">
-        <h3 class="card-title">Register LLM Model</h3>
+  {% if show_model_registry and show_third_party %}
+  <div class="tax-tabs" style="margin-bottom:24px">
+    <button class="tax-tab active" id="integration-tab-btn-models" type="button" onclick="switchIntegrationTab('models')">Model Registry</button>
+    <button class="tax-tab" id="integration-tab-btn-apis" type="button" onclick="switchIntegrationTab('apis')">3rd-party APIs</button>
+  </div>
+  {% endif %}
+
+  {% if show_model_registry %}
+  <div id="integration-tab-models">
+    <div class="sb-page-header">
+      <div>
+        <h1 class="page-title">Model Registry</h1>
       </div>
-      <form method="post" action="{{ url_for('models.add_llm_model') }}">
-        <div class="card-body">
-          <div class="row g-3">
-            <div class="col-md-6 col-xl-4">
-              <label class="form-label">Model name</label>
-              <input type="text" name="name" placeholder="e.g. GPT-4o Enterprise" required class="form-control">
-            </div>
-            <div class="col-md-6 col-xl-4">
-              <label class="form-label">Provider</label>
-              <input type="text" name="provider" value="Azure OpenAI" class="form-control">
-            </div>
-            <div class="col-md-6 col-xl-4">
-              <label class="form-label">Deployment name</label>
-              <input type="text" name="deployment_name" placeholder="Deployment name" required class="form-control">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Endpoint URL</label>
-              <input type="text" name="endpoint_url" placeholder="Endpoint URL" required class="form-control">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">API key</label>
-              <input type="password" name="api_key" placeholder="API key" required class="form-control">
-            </div>
-            <div class="col-md-6 col-xl-4">
-              <label class="form-label">Model type</label>
-              <input type="text" name="model_type" value="chat" class="form-control">
-            </div>
-            <div class="col-md-6 col-xl-4 d-flex align-items-end">
-              <label class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" name="is_default" value="1">
-                <span class="form-check-label">Set as default</span>
-              </label>
-            </div>
-          </div>
-        </div>
-        <div class="card-footer text-end">
-          <button type="submit" class="btn btn-primary">Add Model</button>
-        </div>
-      </form>
+      {% if has_access('models', 'edit') %}
+      <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addModelModal">Add New</button>
+      {% endif %}
     </div>
 
     <div class="card">
-      <div class="card-header">
-        <h3 class="card-title">Configured Models</h3>
-      </div>
       {% if llm_models %}
-      <div class="table-responsive">
-        <table class="table table-vcenter card-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Provider</th>
-              <th>Deployment</th>
-              <th>Endpoint</th>
-              <th>Key</th>
-              <th>Status</th>
-              <th>Default</th>
-              <th class="w-1">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for model in llm_models %}
-            <tr>
-              <td>{{ model.name }}</td>
-              <td>{{ model.provider }}</td>
-              <td>{{ model.deployment_name }}</td>
-              <td class="text-secondary">{{ model.endpoint_url }}</td>
-              <td>{{ model.api_key_encrypted | masked_key }}</td>
-              <td><span class="badge {{ 'text-bg-green-lt' if model.is_active else 'text-bg-secondary-lt' }}">{{ 'Active' if model.is_active else 'Inactive' }}</span></td>
-              <td>{{ 'Yes' if model.is_default else 'No' }}</td>
-              <td>
-                <div class="btn-list justify-content-end flex-nowrap">
-                  <form method="post" action="{{ url_for('models.toggle_llm_model', model_id=model.id) }}">
-                    <button class="btn btn-outline-secondary btn-sm" type="submit">{{ 'Deactivate' if model.is_active else 'Activate' }}</button>
-                  </form>
-                  <form method="post" action="{{ url_for('models.set_default_llm_model', model_id=model.id) }}">
-                    <button class="btn btn-outline-primary btn-sm" type="submit">Set Default</button>
-                  </form>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <div class="ds-table-shell">
+        <div class="table-responsive">
+          <table class="table table-vcenter card-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Provider</th>
+                <th>Deployment</th>
+                <th>Endpoint</th>
+                <th>API Key</th>
+                <th>Status</th>
+                <th>Default</th>
+                {% if has_access('models', 'edit') %}<th class="w-1">Actions</th>{% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for model in llm_models %}
+              <tr>
+                <td>{{ model.name }}</td>
+                <td>{{ model.provider }}</td>
+                <td>{{ model.deployment_name }}</td>
+                <td class="text-secondary">{{ model.endpoint_url }}</td>
+                <td>
+                  <span class="badge {{ 'text-bg-green-lt' if model.api_key_encrypted else 'text-bg-secondary-lt' }}">
+                    {{ 'Configured' if model.api_key_encrypted else 'Not set' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge {{ 'text-bg-green-lt' if model.is_active else 'text-bg-secondary-lt' }}">
+                    {{ 'Active' if model.is_active else 'Inactive' }}
+                  </span>
+                </td>
+                <td>{{ 'Yes' if model.is_default else 'No' }}</td>
+                {% if has_access('models', 'edit') %}
+                <td>
+                  <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#editModelModal{{ model.id }}">
+                    Edit
+                  </button>
+                </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
       {% else %}
       <div class="card-body">
-        {{ empty_state("No models configured", "Add the first LLM model to make this template ready for future AI workflows.", "brain") }}
+        {{ empty_state("No models configured", "Add the first model endpoint to make this template ready for future AI workflows.", "brain") }}
       </div>
       {% endif %}
     </div>
   </div>
+  {% endif %}
 
-  <div class="tab-pane" id="attributes">
-    <div class="card mb-4">
-      <div class="card-header">
-        <h3 class="card-title">Add Attribute</h3>
+  {% if show_third_party %}
+  <div id="integration-tab-apis" {% if show_model_registry %}style="display:none"{% endif %}>
+    <div class="sb-page-header">
+      <div>
+        <h1 class="page-title">3rd-party APIs</h1>
       </div>
-      <form method="post" action="{{ url_for('models.add_attribute') }}">
-        <div class="card-body">
-          <div class="row g-3">
-            <div class="col-md-4">
-              <label class="form-label">Category</label>
-              <input type="text" name="category" placeholder="Category" required class="form-control">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Attribute name</label>
-              <input type="text" name="name" placeholder="Attribute name" required class="form-control">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Description</label>
-              <input type="text" name="description" placeholder="Description" class="form-control">
-            </div>
-          </div>
-        </div>
-        <div class="card-footer text-end">
-          <button type="submit" class="btn btn-primary">Add Attribute</button>
-        </div>
-      </form>
+      {% if has_access('integrations', 'edit') %}
+      <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addIntegrationModal">Add New</button>
+      {% endif %}
     </div>
 
     <div class="card">
-      <div class="card-header">
-        <h3 class="card-title">Configured Attributes</h3>
+      {% if integrations %}
+      <div class="ds-table-shell">
+        <div class="table-responsive">
+          <table class="table table-vcenter card-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Provider</th>
+                <th>Category</th>
+                <th>Base URL</th>
+                <th>API Key</th>
+                <th>Status</th>
+                {% if has_access('integrations', 'edit') %}<th class="w-1">Actions</th>{% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for integration in integrations %}
+              <tr>
+                <td>
+                  <div>{{ integration.name }}</div>
+                  {% if integration.description %}
+                  <div class="text-secondary small">{{ integration.description }}</div>
+                  {% endif %}
+                </td>
+                <td>{{ integration.provider }}</td>
+                <td>{{ integration.category }}</td>
+                <td class="text-secondary">{{ integration.base_url or '—' }}</td>
+                <td>
+                  <span class="badge {{ 'text-bg-green-lt' if integration.api_key_encrypted else 'text-bg-secondary-lt' }}">
+                    {{ 'Configured' if integration.api_key_encrypted else 'Not set' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge {{ 'text-bg-green-lt' if integration.is_active else 'text-bg-secondary-lt' }}">
+                    {{ 'Active' if integration.is_active else 'Inactive' }}
+                  </span>
+                </td>
+                {% if has_access('integrations', 'edit') %}
+                <td>
+                  <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#editIntegrationModal{{ integration.id }}">
+                    Edit
+                  </button>
+                </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
-      {% if attributes %}
+      {% else %}
+      <div class="card-body">
+        {{ empty_state("No integrations configured", "Add the first third-party API connection to make this starter more useful on day one.", "plug") }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if can_view_attributes %}
+<div id="config-tab-attributes" {% if can_view_models or can_view_integrations %}style="display:none"{% endif %}>
+  <div class="tax-tabs" style="margin-bottom:24px">
+    <button class="tax-tab active" type="button">Attributes</button>
+  </div>
+
+  <div class="sb-page-header">
+    <div>
+      <h1 class="page-title">Attributes</h1>
+    </div>
+    <a href="#add-attribute-form" class="btn btn-primary">Add New</a>
+  </div>
+
+  <div class="card mb-4" id="add-attribute-form">
+    <div class="card-header">
+      <h3 class="card-title">Add Attribute</h3>
+    </div>
+    <form method="post" action="{{ url_for('models.add_attribute') }}">
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Category</label>
+            <input type="text" name="category" placeholder="Category" required class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Attribute name</label>
+            <input type="text" name="name" placeholder="Attribute name" required class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Description</label>
+            <input type="text" name="description" placeholder="Description" class="form-control">
+          </div>
+        </div>
+      </div>
+      <div class="card-footer text-end">
+        <button type="submit" class="btn btn-primary">Add Attribute</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Configured Attributes</h3>
+    </div>
+    {% if attributes %}
+    <div class="ds-table-shell">
       <div class="table-responsive">
         <table class="table table-vcenter card-table">
           <thead>
@@ -181,50 +231,274 @@
           </tbody>
         </table>
       </div>
-      {% else %}
-      <div class="card-body">
-        {{ empty_state("No attributes yet", "Attributes become the reusable vocabulary your future products inherit.", "tags") }}
-      </div>
-      {% endif %}
     </div>
+    {% else %}
+    <div class="card-body">
+      {{ empty_state("No attributes yet", "Attributes become the reusable vocabulary your future products inherit.", "tags") }}
+    </div>
+    {% endif %}
   </div>
+</div>
+{% endif %}
 
-  <div class="tab-pane" id="integrations">
-    <div class="row row-cards">
-      {% for integration in integrations %}
-      <div class="col-lg-6">
-        <form method="post" action="{{ url_for('models.save_integration', integration_id=integration.id) }}" class="card h-100">
-          <div class="card-header">
-            <div>
-              <h3 class="card-title mb-1">{{ integration.provider }}</h3>
-              <div class="text-secondary">{{ integration.category }} · {{ integration.name }}</div>
+{% if has_access('models', 'edit') %}
+<div class="modal modal-blur fade" id="addModelModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('models.add_llm_model') }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Model</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Model name</label>
+              <input type="text" name="name" placeholder="e.g. GPT-4o Enterprise" required class="form-control">
             </div>
-            <label class="form-check form-switch m-0">
-              <input class="form-check-input" type="checkbox" name="is_active" value="1" {% if integration.is_active %}checked{% endif %}>
-              <span class="form-check-label">Active</span>
-            </label>
-          </div>
-          <div class="card-body">
-            <p class="text-secondary">{{ integration.description }}</p>
-            <div class="row g-3">
-              <div class="col-12">
-                <label class="form-label">Base URL</label>
-                <input type="text" name="base_url" placeholder="Base URL" value="{{ integration.base_url or '' }}" class="form-control">
-              </div>
-              <div class="col-12">
-                <label class="form-label">Update API key</label>
-                <input type="password" name="api_key" placeholder="Update API key" class="form-control">
-              </div>
+            <div class="col-md-6">
+              <label class="form-label">Provider</label>
+              <input type="text" name="provider" value="Azure OpenAI" class="form-control">
             </div>
-            <div class="text-secondary mt-3">Stored key: {{ integration.api_key_encrypted | masked_key }}</div>
+            <div class="col-md-6">
+              <label class="form-label">Deployment name</label>
+              <input type="text" name="deployment_name" required class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Endpoint URL</label>
+              <input type="text" name="endpoint_url" required class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">API key</label>
+              <input type="password" name="api_key" required class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Model type</label>
+              <input type="text" name="model_type" value="chat" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-check form-switch mt-4">
+                <input class="form-check-input" type="checkbox" name="is_active" value="1" checked>
+                <span class="form-check-label">Active</span>
+              </label>
+            </div>
+            <div class="col-md-6">
+              <label class="form-check form-switch mt-4">
+                <input class="form-check-input" type="checkbox" name="is_default" value="1">
+                <span class="form-check-label">Set as default</span>
+              </label>
+            </div>
           </div>
-          <div class="card-footer text-end">
-            <button type="submit" class="btn btn-primary">Save Integration</button>
-          </div>
-        </form>
-      </div>
-      {% endfor %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Model</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
+
+{% for model in llm_models %}
+<div class="modal modal-blur fade" id="editModelModal{{ model.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('models.update_llm_model', model_id=model.id) }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit {{ model.name }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Model name</label>
+              <input type="text" name="name" value="{{ model.name }}" required class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Provider</label>
+              <input type="text" name="provider" value="{{ model.provider }}" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Deployment name</label>
+              <input type="text" name="deployment_name" value="{{ model.deployment_name }}" required class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Endpoint URL</label>
+              <input type="text" name="endpoint_url" value="{{ model.endpoint_url }}" required class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Replace API key</label>
+              <input type="password" name="api_key" placeholder="Leave blank to keep current encrypted key" class="form-control">
+              <div class="form-hint">Existing keys are stored encrypted and cannot be viewed here.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Model type</label>
+              <input type="text" name="model_type" value="{{ model.model_type }}" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-check form-switch mt-4">
+                <input class="form-check-input" type="checkbox" name="is_active" value="1" {% if model.is_active %}checked{% endif %}>
+                <span class="form-check-label">Active</span>
+              </label>
+            </div>
+            <div class="col-md-6">
+              <label class="form-check form-switch mt-4">
+                <input class="form-check-input" type="checkbox" name="is_default" value="1" {% if model.is_default %}checked{% endif %}>
+                <span class="form-check-label">Set as default</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if has_access('integrations', 'edit') %}
+<div class="modal modal-blur fade" id="addIntegrationModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('models.add_integration') }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Add 3rd-party API</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Name</label>
+              <input type="text" name="name" required class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Provider</label>
+              <input type="text" name="provider" required class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Category</label>
+              <input type="text" name="category" required class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Base URL</label>
+              <input type="text" name="base_url" class="form-control">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description</label>
+              <input type="text" name="description" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">API key</label>
+              <input type="password" name="api_key" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-check form-switch mt-4">
+                <input class="form-check-input" type="checkbox" name="is_active" value="1" checked>
+                <span class="form-check-label">Active</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Integration</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% for integration in integrations %}
+<div class="modal modal-blur fade" id="editIntegrationModal{{ integration.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('models.save_integration', integration_id=integration.id) }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit {{ integration.provider }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Name</label>
+              <input type="text" name="name" value="{{ integration.name }}" required class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Provider</label>
+              <input type="text" name="provider" value="{{ integration.provider }}" required class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Category</label>
+              <input type="text" name="category" value="{{ integration.category }}" required class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Base URL</label>
+              <input type="text" name="base_url" value="{{ integration.base_url or '' }}" class="form-control">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description</label>
+              <input type="text" name="description" value="{{ integration.description or '' }}" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Replace API key</label>
+              <input type="password" name="api_key" placeholder="Leave blank to keep current encrypted key" class="form-control">
+              <div class="form-hint">Stored API keys remain encrypted and cannot be read from this screen.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-check form-switch mt-4">
+                <input class="form-check-input" type="checkbox" name="is_active" value="1" {% if integration.is_active %}checked{% endif %}>
+                <span class="form-check-label">Active</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+<script>
+function switchIntegrationTab(tabName) {
+  const modelsTab = document.getElementById('integration-tab-models');
+  const apisTab = document.getElementById('integration-tab-apis');
+  const modelsBtn = document.getElementById('integration-tab-btn-models');
+  const apisBtn = document.getElementById('integration-tab-btn-apis');
+  const showModels = tabName === 'models';
+
+  if (modelsTab) modelsTab.style.display = showModels ? 'block' : 'none';
+  if (apisTab) apisTab.style.display = showModels ? 'none' : 'block';
+  if (modelsBtn) modelsBtn.classList.toggle('active', showModels);
+  if (apisBtn) apisBtn.classList.toggle('active', !showModels);
+
+  history.replaceState(null, '', showModels ? '#integrations' : '#apis');
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  const integrationsTab = document.getElementById('config-tab-integrations');
+  const attributesTab = document.getElementById('config-tab-attributes');
+  const hash = window.location.hash;
+
+  if (hash === '#attributes') {
+    if (integrationsTab) integrationsTab.style.display = 'none';
+    if (attributesTab) attributesTab.style.display = 'block';
+  } else {
+    if (integrationsTab) integrationsTab.style.display = 'block';
+    if (attributesTab) attributesTab.style.display = 'none';
+    if (hash === '#apis') {
+      switchIntegrationTab('apis');
+    } else {
+      switchIntegrationTab('models');
+    }
+  }
+});
+</script>
 {% endblock %}

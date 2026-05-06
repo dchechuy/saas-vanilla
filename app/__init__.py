@@ -3,6 +3,7 @@ import os
 from flask import Flask
 from flask_login import current_user
 
+from .access import user_has_access
 from .extensions import db, login_manager, migrate
 from .page_registry import PAGES
 
@@ -22,7 +23,7 @@ def create_app() -> Flask:
 
     @login_manager.user_loader
     def load_user(user_id: str):
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
 
     from .routes.auth import auth_bp
     from .routes.help import help_bp
@@ -40,34 +41,28 @@ def create_app() -> Flask:
 
     @app.context_processor
     def inject_permissions():
-        def has_access(page_slug: str, min_level: str = "view") -> bool:
-            if not current_user.is_authenticated:
-                return False
-            if current_user.role == "admin":
-                return True
-
-            from .models import Permission, Role
-            from .page_registry import ACCESS_LEVELS
-
-            role = Role.query.filter_by(name=current_user.role).first()
-            permission = (
-                Permission.query.filter_by(role_id=role.id, page_slug=page_slug).first()
-                if role else None
-            )
-            level = permission.access_level if permission else "no_access"
-            return ACCESS_LEVELS.index(level) >= ACCESS_LEVELS.index(min_level)
-
-        return {"has_access": has_access}
+        return {"has_access": user_has_access}
 
     with app.app_context():
-        db.create_all()
         _seed_defaults()
 
     return app
 
 
 def _seed_defaults() -> None:
+    from sqlalchemy import inspect as sa_inspect
+
     from .models import Attribute, Integration, Permission, Role, User
+
+    # Guard: skip seeding if schema hasn't been created or migrated yet.
+    # This prevents errors when the DB is stale (missing columns) or doesn't exist.
+    # After `flask db upgrade`, the schema is up to date and seeding runs on next startup.
+    inspector = sa_inspect(db.engine)
+    if not inspector.has_table("user"):
+        return
+    existing_cols = {c["name"] for c in inspector.get_columns("user")}
+    if "updated_at" not in existing_cols:
+        return  # Schema is out of date — run `flask db upgrade` first
 
     admin_role = Role.query.filter_by(name="admin").first()
     if not admin_role:
@@ -76,15 +71,22 @@ def _seed_defaults() -> None:
         db.session.flush()
         for page in PAGES:
             db.session.add(Permission(role_id=admin_role.id, page_slug=page["slug"], access_level="edit"))
+    elif not admin_role.is_system:
+        admin_role.is_system = True
 
     member_role = Role.query.filter_by(name="member").first()
     if not member_role:
-        member_role = Role(name="member", is_system=True)
+        member_role = Role(name="member", is_system=False)
         db.session.add(member_role)
         db.session.flush()
         for page in PAGES:
             level = "view" if page["slug"] in {"dashboard", "help"} else "no_access"
             db.session.add(Permission(role_id=member_role.id, page_slug=page["slug"], access_level=level))
+    elif member_role.is_system:
+        member_role.is_system = False
+
+    for role in Role.query.all():
+        role.is_system = role.name.lower() == "admin"
 
     for role in Role.query.all():
         for page in PAGES:
@@ -134,4 +136,3 @@ def _seed_defaults() -> None:
             )
 
     db.session.commit()
-

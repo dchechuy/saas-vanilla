@@ -6,7 +6,9 @@
   "Reference",
   "Keep every future product understandable to operators, builders, and stakeholders from day one."
 ) }}
-<div class="card prose">
-  {{ content_html | safe }}
+<div class="card">
+  <div class="card-body prose ds-doc-body">
+    {{ content_html | safe }}
+  </div>
 </div>
 {% endblock %}

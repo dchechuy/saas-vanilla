@@ -56,7 +56,8 @@
     <h3 class="card-title">Recent Release Notes</h3>
   </div>
   {% if recent_releases %}
-  <div class="table-responsive">
+  <div class="ds-table-shell">
+    <div class="table-responsive">
     <table class="table table-vcenter card-table">
       <thead>
         <tr>
@@ -72,11 +73,14 @@
           <td class="text-nowrap">v{{ note.version_string }}</td>
           <td><span class="badge text-bg-primary-lt">{{ note.release_type }}</span></td>
           <td>{{ note.title }}</td>
-          <td class="text-secondary">{{ note.created_at.strftime('%Y-%m-%d') }}</td>
+          <td class="text-secondary">
+            <span class="local-time" data-utc="{{ note.created_at.isoformat() }}">{{ note.created_at.strftime('%Y-%m-%d') }}</span>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
   {% else %}
   <div class="card-body">

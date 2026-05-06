@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
@@ -27,6 +29,8 @@ def login():
         elif not user.is_active:
             flash("Your account is inactive.", "error")
         else:
+            user.last_login = datetime.utcnow()
+            db.session.commit()
             login_user(user)
             if user.must_change_password:
                 flash("Please change the default password before continuing.", "warning")
@@ -42,14 +46,3 @@ def logout():
     logout_user()
     flash("You have been logged out.", "success")
     return redirect(url_for("auth.login"))
-
-
-@auth_bp.route("/bootstrap/reset-admin", methods=["POST"])
-def reset_admin():
-    user = User.query.filter_by(username="admin").first()
-    if user:
-        user.set_password("Changeme-123")
-        user.must_change_password = True
-        db.session.commit()
-    return redirect(url_for("auth.login"))
-

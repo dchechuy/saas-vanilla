@@ -42,14 +42,16 @@
 <div class="stack">
   {% for note in notes %}
   <div class="card ds-release-card">
-    <div class="section-title-row mb-3">
-      <div>
-        <h2 class="section-title">v{{ note.version_string }} · {{ note.title }}</h2>
-        <div class="muted">{{ note.release_type }} release · {{ note.created_at.strftime('%Y-%m-%d') }}</div>
+    <div class="card-body">
+      <div class="section-title-row mb-3">
+        <div>
+          <h2 class="section-title">v{{ note.version_string }} · {{ note.title }}</h2>
+          <div class="muted">{{ note.release_type }} release · <span class="local-time" data-utc="{{ note.created_at.isoformat() }}">{{ note.created_at.strftime('%Y-%m-%d') }}</span></div>
+        </div>
+        <span class="badge text-bg-primary-lt">{{ note.release_type }}</span>
       </div>
-      <span class="badge text-bg-primary-lt">{{ note.release_type }}</span>
+      <pre class="release-markdown">{{ note.summary_markdown }}</pre>
     </div>
-    <pre class="release-markdown">{{ note.summary_markdown }}</pre>
   </div>
   {% else %}
   {{ empty_state("No release notes yet", "Publish your first release note to start the documentation habit this template should carry into every future product.", "sparkles") }}

@@ -1,26 +1,40 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from ..access import permission_required
-from ..crypto import decrypt_value, encrypt_value
+from ..access import permission_required, user_has_access
+from ..crypto import encrypt_value
 from ..extensions import db
 from ..models import Attribute, Integration, LlmModel
 
 models_bp = Blueprint("models", __name__, url_prefix="/models")
 
 
+def _redirect_to_system_config(anchor: str = "integrations"):
+    return redirect(f"{url_for('models.list_models')}#{anchor}")
+
+
 @models_bp.route("/")
 @login_required
-@permission_required("models", "view")
 def list_models():
+    can_view_models = user_has_access("models", "view")
+    can_view_attributes = user_has_access("attributes", "view")
+    can_view_integrations = user_has_access("integrations", "view")
+
+    if not any([can_view_models, can_view_attributes, can_view_integrations]):
+        flash("You do not have permission to access this page.", "error")
+        return redirect(url_for("main.dashboard"))
+
     return render_template(
         "models/list.html",
-        llm_models=LlmModel.query.order_by(LlmModel.name).all(),
-        attributes=Attribute.query.order_by(Attribute.category, Attribute.name).all(),
-        integrations=Integration.query.order_by(Integration.category, Integration.provider).all(),
+        llm_models=LlmModel.query.order_by(LlmModel.name).all() if can_view_models else [],
+        attributes=Attribute.query.order_by(Attribute.category, Attribute.name).all() if can_view_attributes else [],
+        integrations=Integration.query.order_by(Integration.category, Integration.provider, Integration.name).all() if can_view_integrations else [],
+        can_view_models=can_view_models,
+        can_view_attributes=can_view_attributes,
+        can_view_integrations=can_view_integrations,
         breadcrumbs=[
             {"label": "Home", "url": url_for("main.dashboard")},
-            {"label": "System Config", "url": None},
+            {"label": "Administration", "url": None},
         ],
     )
 
@@ -32,11 +46,11 @@ def add_llm_model():
     name = request.form.get("name", "").strip()
     if not name:
         flash("Model name is required.", "error")
-        return redirect(url_for("models.list_models"))
+        return _redirect_to_system_config()
 
     if LlmModel.query.filter_by(name=name).first():
         flash(f"Model '{name}' already exists.", "error")
-        return redirect(url_for("models.list_models"))
+        return _redirect_to_system_config()
 
     make_default = request.form.get("is_default") == "1"
     if make_default:
@@ -49,35 +63,49 @@ def add_llm_model():
         endpoint_url=request.form.get("endpoint_url", "").strip(),
         api_key_encrypted=encrypt_value(request.form.get("api_key", "").strip()),
         model_type=request.form.get("model_type", "chat").strip() or "chat",
+        is_active=request.form.get("is_active", "1") == "1",
         is_default=make_default,
     )
     db.session.add(model)
     db.session.commit()
     flash(f"Model '{name}' added.", "success")
-    return redirect(url_for("models.list_models"))
+    return _redirect_to_system_config()
 
 
-@models_bp.route("/llm/<int:model_id>/toggle", methods=["POST"])
+@models_bp.route("/llm/<int:model_id>/update", methods=["POST"])
 @login_required
 @permission_required("models", "edit")
-def toggle_llm_model(model_id):
-    model = LlmModel.query.get_or_404(model_id)
-    model.is_active = not model.is_active
-    db.session.commit()
-    flash(f"Model '{model.name}' {'activated' if model.is_active else 'deactivated'}.", "success")
-    return redirect(url_for("models.list_models"))
+def update_llm_model(model_id):
+    model = db.get_or_404(LlmModel, model_id)
+    name = request.form.get("name", "").strip()
+    if not name:
+        flash("Model name is required.", "error")
+        return _redirect_to_system_config()
 
+    duplicate = LlmModel.query.filter(LlmModel.name == name, LlmModel.id != model.id).first()
+    if duplicate:
+        flash(f"Model '{name}' already exists.", "error")
+        return _redirect_to_system_config()
 
-@models_bp.route("/llm/<int:model_id>/default", methods=["POST"])
-@login_required
-@permission_required("models", "edit")
-def set_default_llm_model(model_id):
-    model = LlmModel.query.get_or_404(model_id)
-    LlmModel.query.update({"is_default": False})
-    model.is_default = True
+    make_default = request.form.get("is_default") == "1"
+    if make_default:
+        LlmModel.query.update({"is_default": False})
+
+    model.name = name
+    model.provider = request.form.get("provider", "Azure OpenAI").strip() or "Azure OpenAI"
+    model.deployment_name = request.form.get("deployment_name", "").strip()
+    model.endpoint_url = request.form.get("endpoint_url", "").strip()
+    model.model_type = request.form.get("model_type", "chat").strip() or "chat"
+    model.is_active = request.form.get("is_active") == "1"
+    model.is_default = make_default
+
+    api_key = request.form.get("api_key", "").strip()
+    if api_key:
+        model.api_key_encrypted = encrypt_value(api_key)
+
     db.session.commit()
-    flash(f"Model '{model.name}' set as default.", "success")
-    return redirect(url_for("models.list_models"))
+    flash(f"Model '{model.name}' updated.", "success")
+    return _redirect_to_system_config()
 
 
 @models_bp.route("/attributes/add", methods=["POST"])
@@ -100,41 +128,82 @@ def add_attribute():
         )
         db.session.commit()
         flash("Attribute added.", "success")
-    return redirect(url_for("models.list_models") + "#attributes")
+    return _redirect_to_system_config("attributes")
 
 
 @models_bp.route("/attributes/<int:attribute_id>/toggle", methods=["POST"])
 @login_required
 @permission_required("attributes", "edit")
 def toggle_attribute(attribute_id):
-    attribute = Attribute.query.get_or_404(attribute_id)
+    attribute = db.get_or_404(Attribute, attribute_id)
     attribute.is_active = not attribute.is_active
     db.session.commit()
     flash(f"Attribute '{attribute.name}' updated.", "success")
-    return redirect(url_for("models.list_models") + "#attributes")
+    return _redirect_to_system_config("attributes")
+
+
+@models_bp.route("/integrations/add", methods=["POST"])
+@login_required
+@permission_required("integrations", "edit")
+def add_integration():
+    name = request.form.get("name", "").strip()
+    provider = request.form.get("provider", "").strip()
+    category = request.form.get("category", "").strip()
+    if not name or not provider or not category:
+        flash("Integration name, provider, and category are required.", "error")
+        return _redirect_to_system_config()
+
+    if Integration.query.filter_by(name=name).first():
+        flash(f"Integration '{name}' already exists.", "error")
+        return _redirect_to_system_config()
+
+    integration = Integration(
+        name=name,
+        provider=provider,
+        category=category,
+        description=request.form.get("description", "").strip() or None,
+        base_url=request.form.get("base_url", "").strip() or None,
+        is_active=request.form.get("is_active", "1") == "1",
+    )
+    api_key = request.form.get("api_key", "").strip()
+    if api_key:
+        integration.api_key_encrypted = encrypt_value(api_key)
+
+    db.session.add(integration)
+    db.session.commit()
+    flash(f"Integration '{integration.provider}' added.", "success")
+    return _redirect_to_system_config()
 
 
 @models_bp.route("/integrations/<int:integration_id>/save", methods=["POST"])
 @login_required
 @permission_required("integrations", "edit")
 def save_integration(integration_id):
-    integration = Integration.query.get_or_404(integration_id)
+    integration = db.get_or_404(Integration, integration_id)
+
+    name = request.form.get("name", "").strip()
+    provider = request.form.get("provider", "").strip()
+    category = request.form.get("category", "").strip()
+    if not name or not provider or not category:
+        flash("Integration name, provider, and category are required.", "error")
+        return _redirect_to_system_config()
+
+    duplicate = Integration.query.filter(Integration.name == name, Integration.id != integration.id).first()
+    if duplicate:
+        flash(f"Integration '{name}' already exists.", "error")
+        return _redirect_to_system_config()
+
+    integration.name = name
+    integration.provider = provider
+    integration.category = category
+    integration.description = request.form.get("description", "").strip() or None
     integration.base_url = request.form.get("base_url", "").strip() or None
+    integration.is_active = request.form.get("is_active") == "1"
+
     api_key = request.form.get("api_key", "").strip()
     if api_key:
         integration.api_key_encrypted = encrypt_value(api_key)
-    integration.is_active = request.form.get("is_active") == "1"
+
     db.session.commit()
     flash(f"Integration '{integration.provider}' saved.", "success")
-    return redirect(url_for("models.list_models") + "#integrations")
-
-
-@models_bp.app_template_filter("masked_key")
-def masked_key(value: str) -> str:
-    plain = decrypt_value(value) if value else ""
-    if not plain:
-        return "Not set"
-    if len(plain) <= 8:
-        return "*" * len(plain)
-    return plain[:4] + "..." + plain[-4:]
-
+    return _redirect_to_system_config()
