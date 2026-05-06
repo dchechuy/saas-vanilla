@@ -1,7 +1,12 @@
 {% extends "help/base_help.html" %}
+{% from "macros/ui.html" import page_header %}
 {% block help_content %}
+{{ page_header(
+  "Documentation",
+  "Reference",
+  "Keep every future product understandable to operators, builders, and stakeholders from day one."
+) }}
 <div class="card prose">
   {{ content_html | safe }}
 </div>
 {% endblock %}
-

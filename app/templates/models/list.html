@@ -1,125 +1,230 @@
 {% extends "base.html" %}
+{% from "macros/ui.html" import empty_state, page_header %}
 {% block title %}System Config - saas-vanilla{% endblock %}
 {% block page_heading %}System Config{% endblock %}
 {% block content %}
-<div class="card" id="llm-models">
-  <div class="section-title-row">
-    <h2 class="section-title">LLM Models</h2>
-  </div>
-  <form method="post" action="{{ url_for('models.add_llm_model') }}" class="stack">
-    <div class="form-grid">
-      <input type="text" name="name" placeholder="Model name" required>
-      <input type="text" name="provider" placeholder="Provider" value="Azure OpenAI">
-      <input type="text" name="deployment_name" placeholder="Deployment name" required>
-      <input type="text" name="endpoint_url" placeholder="Endpoint URL" required>
-      <input type="password" name="api_key" placeholder="API key" required>
-      <input type="text" name="model_type" placeholder="Model type" value="chat">
-    </div>
-    <label><input type="checkbox" name="is_default" value="1"> Set as default</label>
-    <div><button type="submit" class="btn btn-primary btn-sm">Add Model</button></div>
-  </form>
+{{ page_header(
+  "System Configuration",
+  "Platform Controls",
+  "Define the reusable AI and operations layer for future projects: models, business attributes, and third-party integrations."
+) }}
 
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Provider</th>
-        <th>Deployment</th>
-        <th>Endpoint</th>
-        <th>Key</th>
-        <th>Status</th>
-        <th>Default</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for model in llm_models %}
-      <tr>
-        <td>{{ model.name }}</td>
-        <td>{{ model.provider }}</td>
-        <td>{{ model.deployment_name }}</td>
-        <td>{{ model.endpoint_url }}</td>
-        <td>{{ model.api_key_encrypted | masked_key }}</td>
-        <td>{{ 'Active' if model.is_active else 'Inactive' }}</td>
-        <td>{{ 'Yes' if model.is_default else 'No' }}</td>
-        <td class="actions-cell">
-          <form method="post" action="{{ url_for('models.toggle_llm_model', model_id=model.id) }}">
-            <button class="btn btn-secondary btn-sm" type="submit">{{ 'Deactivate' if model.is_active else 'Activate' }}</button>
-          </form>
-          <form method="post" action="{{ url_for('models.set_default_llm_model', model_id=model.id) }}">
-            <button class="btn btn-secondary btn-sm" type="submit">Set Default</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+<ul class="nav nav-pills mb-4" data-ds-hash-tabs>
+  <li class="nav-item">
+    <a href="#llm-models" class="nav-link active" data-bs-toggle="tab">LLM Models</a>
+  </li>
+  <li class="nav-item">
+    <a href="#attributes" class="nav-link" data-bs-toggle="tab">Attributes</a>
+  </li>
+  <li class="nav-item">
+    <a href="#integrations" class="nav-link" data-bs-toggle="tab">Integrations</a>
+  </li>
+</ul>
 
-<div class="card" id="attributes">
-  <div class="section-title-row">
-    <h2 class="section-title">Attributes</h2>
-  </div>
-  <form method="post" action="{{ url_for('models.add_attribute') }}" class="stack">
-    <div class="form-grid">
-      <input type="text" name="category" placeholder="Category" required>
-      <input type="text" name="name" placeholder="Attribute name" required>
-      <input type="text" name="description" placeholder="Description">
-    </div>
-    <div><button type="submit" class="btn btn-primary btn-sm">Add Attribute</button></div>
-  </form>
-  <table>
-    <thead>
-      <tr>
-        <th>Category</th>
-        <th>Name</th>
-        <th>Description</th>
-        <th>Status</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for attribute in attributes %}
-      <tr>
-        <td>{{ attribute.category }}</td>
-        <td>{{ attribute.name }}</td>
-        <td>{{ attribute.description or '—' }}</td>
-        <td>{{ 'Active' if attribute.is_active else 'Inactive' }}</td>
-        <td>
-          <form method="post" action="{{ url_for('models.toggle_attribute', attribute_id=attribute.id) }}">
-            <button class="btn btn-secondary btn-sm" type="submit">{{ 'Deactivate' if attribute.is_active else 'Activate' }}</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-
-<div class="card" id="integrations">
-  <div class="section-title-row">
-    <h2 class="section-title">Integrations</h2>
-  </div>
-  <div class="stack">
-    {% for integration in integrations %}
-    <form method="post" action="{{ url_for('models.save_integration', integration_id=integration.id) }}" class="integration-card">
-      <div class="integration-head">
-        <div>
-          <div class="role-title">{{ integration.provider }}</div>
-          <div class="muted">{{ integration.category }} · {{ integration.name }}</div>
+<div class="tab-content">
+  <div class="tab-pane active show" id="llm-models">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h3 class="card-title">Register LLM Model</h3>
+      </div>
+      <form method="post" action="{{ url_for('models.add_llm_model') }}">
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6 col-xl-4">
+              <label class="form-label">Model name</label>
+              <input type="text" name="name" placeholder="e.g. GPT-4o Enterprise" required class="form-control">
+            </div>
+            <div class="col-md-6 col-xl-4">
+              <label class="form-label">Provider</label>
+              <input type="text" name="provider" value="Azure OpenAI" class="form-control">
+            </div>
+            <div class="col-md-6 col-xl-4">
+              <label class="form-label">Deployment name</label>
+              <input type="text" name="deployment_name" placeholder="Deployment name" required class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Endpoint URL</label>
+              <input type="text" name="endpoint_url" placeholder="Endpoint URL" required class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">API key</label>
+              <input type="password" name="api_key" placeholder="API key" required class="form-control">
+            </div>
+            <div class="col-md-6 col-xl-4">
+              <label class="form-label">Model type</label>
+              <input type="text" name="model_type" value="chat" class="form-control">
+            </div>
+            <div class="col-md-6 col-xl-4 d-flex align-items-end">
+              <label class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="is_default" value="1">
+                <span class="form-check-label">Set as default</span>
+              </label>
+            </div>
+          </div>
         </div>
-        <label><input type="checkbox" name="is_active" value="1" {% if integration.is_active %}checked{% endif %}> Active</label>
+        <div class="card-footer text-end">
+          <button type="submit" class="btn btn-primary">Add Model</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Configured Models</h3>
       </div>
-      <p class="muted">{{ integration.description }}</p>
-      <div class="form-grid">
-        <input type="text" name="base_url" placeholder="Base URL" value="{{ integration.base_url or '' }}">
-        <input type="password" name="api_key" placeholder="Update API key">
+      {% if llm_models %}
+      <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Provider</th>
+              <th>Deployment</th>
+              <th>Endpoint</th>
+              <th>Key</th>
+              <th>Status</th>
+              <th>Default</th>
+              <th class="w-1">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for model in llm_models %}
+            <tr>
+              <td>{{ model.name }}</td>
+              <td>{{ model.provider }}</td>
+              <td>{{ model.deployment_name }}</td>
+              <td class="text-secondary">{{ model.endpoint_url }}</td>
+              <td>{{ model.api_key_encrypted | masked_key }}</td>
+              <td><span class="badge {{ 'text-bg-green-lt' if model.is_active else 'text-bg-secondary-lt' }}">{{ 'Active' if model.is_active else 'Inactive' }}</span></td>
+              <td>{{ 'Yes' if model.is_default else 'No' }}</td>
+              <td>
+                <div class="btn-list justify-content-end flex-nowrap">
+                  <form method="post" action="{{ url_for('models.toggle_llm_model', model_id=model.id) }}">
+                    <button class="btn btn-outline-secondary btn-sm" type="submit">{{ 'Deactivate' if model.is_active else 'Activate' }}</button>
+                  </form>
+                  <form method="post" action="{{ url_for('models.set_default_llm_model', model_id=model.id) }}">
+                    <button class="btn btn-outline-primary btn-sm" type="submit">Set Default</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
-      <div class="muted">Stored key: {{ integration.api_key_encrypted | masked_key }}</div>
-      <div><button type="submit" class="btn btn-secondary btn-sm">Save Integration</button></div>
-    </form>
-    {% endfor %}
+      {% else %}
+      <div class="card-body">
+        {{ empty_state("No models configured", "Add the first LLM model to make this template ready for future AI workflows.", "brain") }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="tab-pane" id="attributes">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h3 class="card-title">Add Attribute</h3>
+      </div>
+      <form method="post" action="{{ url_for('models.add_attribute') }}">
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Category</label>
+              <input type="text" name="category" placeholder="Category" required class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Attribute name</label>
+              <input type="text" name="name" placeholder="Attribute name" required class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Description</label>
+              <input type="text" name="description" placeholder="Description" class="form-control">
+            </div>
+          </div>
+        </div>
+        <div class="card-footer text-end">
+          <button type="submit" class="btn btn-primary">Add Attribute</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Configured Attributes</h3>
+      </div>
+      {% if attributes %}
+      <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Status</th>
+              <th class="w-1">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for attribute in attributes %}
+            <tr>
+              <td>{{ attribute.category }}</td>
+              <td>{{ attribute.name }}</td>
+              <td class="text-secondary">{{ attribute.description or '—' }}</td>
+              <td><span class="badge {{ 'text-bg-green-lt' if attribute.is_active else 'text-bg-secondary-lt' }}">{{ 'Active' if attribute.is_active else 'Inactive' }}</span></td>
+              <td>
+                <form method="post" action="{{ url_for('models.toggle_attribute', attribute_id=attribute.id) }}">
+                  <button class="btn btn-outline-secondary btn-sm" type="submit">{{ 'Deactivate' if attribute.is_active else 'Activate' }}</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body">
+        {{ empty_state("No attributes yet", "Attributes become the reusable vocabulary your future products inherit.", "tags") }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="tab-pane" id="integrations">
+    <div class="row row-cards">
+      {% for integration in integrations %}
+      <div class="col-lg-6">
+        <form method="post" action="{{ url_for('models.save_integration', integration_id=integration.id) }}" class="card h-100">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title mb-1">{{ integration.provider }}</h3>
+              <div class="text-secondary">{{ integration.category }} · {{ integration.name }}</div>
+            </div>
+            <label class="form-check form-switch m-0">
+              <input class="form-check-input" type="checkbox" name="is_active" value="1" {% if integration.is_active %}checked{% endif %}>
+              <span class="form-check-label">Active</span>
+            </label>
+          </div>
+          <div class="card-body">
+            <p class="text-secondary">{{ integration.description }}</p>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Base URL</label>
+                <input type="text" name="base_url" placeholder="Base URL" value="{{ integration.base_url or '' }}" class="form-control">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Update API key</label>
+                <input type="password" name="api_key" placeholder="Update API key" class="form-control">
+              </div>
+            </div>
+            <div class="text-secondary mt-3">Stored key: {{ integration.api_key_encrypted | masked_key }}</div>
+          </div>
+          <div class="card-footer text-end">
+            <button type="submit" class="btn btn-primary">Save Integration</button>
+          </div>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
   </div>
 </div>
 {% endblock %}
-

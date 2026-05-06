@@ -1,107 +1,154 @@
 {% extends "base.html" %}
 {% from "macros/user_avatar.html" import avatar %}
+{% from "macros/ui.html" import empty_state, page_header %}
 {% block title %}User Management - saas-vanilla{% endblock %}
 {% block page_heading %}User Management{% endblock %}
 {% block content %}
-<div class="page-actions">
-  <a href="{{ url_for('users.add_user') }}" class="btn btn-primary">Add User</a>
-</div>
+{{ page_header(
+  "User Management",
+  "Access Control",
+  "Manage workspace members, assign durable roles, and preserve permission patterns that future SaaS projects can inherit.",
+  '<a href="' ~ url_for('users.add_user') ~ '" class="btn btn-primary">Add User</a>'
+) }}
 
-<div class="card">
-  <div class="section-title-row">
-    <h2 class="section-title">Users</h2>
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th></th>
-        <th>Full Name</th>
-        <th>Username</th>
-        <th>Email</th>
-        <th>Role</th>
-        <th>Status</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for user in users %}
-      <tr>
-        <td>{{ avatar(user, 'md') }}</td>
-        <td>{{ user.display_name }}</td>
-        <td>{{ user.username }}</td>
-        <td>{{ user.email }}</td>
-        <td><span class="badge">{{ user.role }}</span></td>
-        <td>{{ 'Active' if user.is_active else 'Inactive' }}</td>
-        <td class="actions-cell">
-          <a href="{{ url_for('users.edit_user', user_id=user.id) }}" class="btn btn-secondary btn-sm">Edit</a>
-          {% if user.id != current_user.id %}
-          <form method="post" action="{{ url_for('users.toggle_user', user_id=user.id) }}">
-            <button type="submit" class="btn btn-secondary btn-sm">{{ 'Deactivate' if user.is_active else 'Activate' }}</button>
-          </form>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+<ul class="nav nav-tabs mb-4" data-ds-hash-tabs>
+  <li class="nav-item">
+    <a href="#users" class="nav-link active" data-bs-toggle="tab">Users</a>
+  </li>
+  <li class="nav-item">
+    <a href="#permissions" class="nav-link" data-bs-toggle="tab">Permissions</a>
+  </li>
+</ul>
 
-<div class="card" id="permissions">
-  <div class="section-title-row">
-    <h2 class="section-title">Permissions</h2>
-    <form method="post" action="{{ url_for('permissions.add_role') }}" class="inline-form">
-      <input type="text" name="name" placeholder="new role name">
-      <button type="submit" class="btn btn-primary btn-sm">Add Role</button>
-    </form>
-  </div>
-
-  {% for role in roles %}
-  <div class="role-card">
-    <div class="role-card-header">
-      <div>
-        <div class="role-title">{{ role.name }}</div>
-        <div class="muted">{{ user_counts.get(role.name, 0) }} active user(s)</div>
+<div class="tab-content">
+  <div class="tab-pane active show" id="users">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Workspace Users</h3>
       </div>
-      {% if not role.is_system %}
-      <form method="post" action="{{ url_for('permissions.delete_role', role_id=role.id) }}">
-        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-      </form>
+      {% if users %}
+      <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Full Name</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th class="w-1">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+            <tr>
+              <td>{{ avatar(user, 'md') }}</td>
+              <td>{{ user.display_name }}</td>
+              <td class="text-secondary">{{ user.username }}</td>
+              <td>{{ user.email }}</td>
+              <td><span class="badge text-bg-azure-lt">{{ user.role }}</span></td>
+              <td>
+                <span class="badge {{ 'text-bg-green-lt' if user.is_active else 'text-bg-secondary-lt' }}">
+                  {{ 'Active' if user.is_active else 'Inactive' }}
+                </span>
+              </td>
+              <td>
+                <div class="btn-list justify-content-end flex-nowrap">
+                  <a href="{{ url_for('users.edit_user', user_id=user.id) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+                  {% if user.id != current_user.id %}
+                  <form method="post" action="{{ url_for('users.toggle_user', user_id=user.id) }}">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">{{ 'Deactivate' if user.is_active else 'Activate' }}</button>
+                  </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body">
+        {{ empty_state("No users yet", "Create the first user to start assigning access and ownership.", "users") }}
+      </div>
       {% endif %}
     </div>
-
-    <form method="post" action="{{ url_for('permissions.save_role', role_id=role.id) }}" class="stack">
-      <div class="inline-form">
-        <label class="label">Role name</label>
-        <input type="text" name="name" value="{{ role.name }}" {% if role.is_system %}readonly{% endif %}>
-      </div>
-      <div class="permission-grid">
-        {% for page in [
-          {'slug': 'dashboard', 'label': 'Dashboard'},
-          {'slug': 'users', 'label': 'Users'},
-          {'slug': 'permissions', 'label': 'Permissions'},
-          {'slug': 'models', 'label': 'LLM Models'},
-          {'slug': 'attributes', 'label': 'Attributes'},
-          {'slug': 'integrations', 'label': 'Integrations'},
-          {'slug': 'help', 'label': 'Help'},
-        ] %}
-        <div class="permission-row">
-          <span>{{ page.label }}</span>
-          <select name="perm_{{ page.slug }}" {% if role.is_system %}disabled{% endif %}>
-            {% for level in ['no_access', 'view', 'edit'] %}
-            <option value="{{ level }}" {% if role.get_permission(page.slug) == level %}selected{% endif %}>{{ level }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        {% endfor %}
-      </div>
-      {% if not role.is_system %}
-      <div>
-        <button type="submit" class="btn btn-secondary btn-sm">Save Role</button>
-      </div>
-      {% endif %}
-    </form>
   </div>
-  {% endfor %}
+
+  <div class="tab-pane" id="permissions">
+    <div class="card mb-4">
+      <div class="card-body">
+        <form method="post" action="{{ url_for('permissions.add_role') }}" class="row g-3 align-items-end">
+          <div class="col-md-8 col-lg-6">
+            <label class="form-label">Add Role</label>
+            <input type="text" name="name" placeholder="e.g. analyst, operator, success-manager" class="form-control">
+          </div>
+          <div class="col-md-auto">
+            <button type="submit" class="btn btn-primary">Create Role</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {% for role in roles %}
+    <div class="card mb-3">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title mb-1">{{ role.name }}</h3>
+          <div class="text-secondary">{{ user_counts.get(role.name, 0) }} active user(s)</div>
+        </div>
+        <div class="card-actions">
+          {% if role.is_system %}
+          <span class="badge text-bg-secondary-lt">System role</span>
+          {% else %}
+          <form method="post" action="{{ url_for('permissions.delete_role', role_id=role.id) }}">
+            <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+
+      <form method="post" action="{{ url_for('permissions.save_role', role_id=role.id) }}">
+        <div class="card-body">
+          <div class="row g-3 mb-4">
+            <div class="col-md-6 col-lg-4">
+              <label class="form-label">Role Name</label>
+              <input type="text" name="name" value="{{ role.name }}" class="form-control" {% if role.is_system %}readonly{% endif %}>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            {% for page in [
+              {'slug': 'dashboard', 'label': 'Dashboard'},
+              {'slug': 'users', 'label': 'Users'},
+              {'slug': 'permissions', 'label': 'Permissions'},
+              {'slug': 'models', 'label': 'LLM Models'},
+              {'slug': 'attributes', 'label': 'Attributes'},
+              {'slug': 'integrations', 'label': 'Integrations'},
+              {'slug': 'help', 'label': 'Help'},
+            ] %}
+            <div class="col-md-6 col-xl-4">
+              <div class="ds-permission-tile">
+                <label class="form-label">{{ page.label }}</label>
+                <select name="perm_{{ page.slug }}" class="form-select" {% if role.is_system %}disabled{% endif %}>
+                  {% for level in ['no_access', 'view', 'edit'] %}
+                  <option value="{{ level }}" {% if role.get_permission(page.slug) == level %}selected{% endif %}>{{ level }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% if not role.is_system %}
+        <div class="card-footer text-end">
+          <button type="submit" class="btn btn-primary">Save Role</button>
+        </div>
+        {% endif %}
+      </form>
+    </div>
+    {% endfor %}
+  </div>
 </div>
 {% endblock %}
-

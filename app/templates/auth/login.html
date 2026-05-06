@@ -4,40 +4,47 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - saas-vanilla</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body class="login-body">
-  <div class="login-card">
-    <div class="login-kicker">Reusable SaaS foundation</div>
-    <h1>Welcome to saas-vanilla</h1>
-    <p>Sign in to manage the platform, configure integrations, and launch your next prototype.</p>
+  <div class="container-tight py-6">
+    <div class="card card-md login-card">
+      <div class="card-body p-4 p-md-5">
+        <div class="login-kicker">Reusable SaaS foundation</div>
+        <h1 class="login-title">Welcome to saas-vanilla</h1>
+        <p class="login-copy">Sign in to manage the platform, configure integrations, and launch your next prototype.</p>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-      <div class="flash-stack">
-        {% for category, message in messages %}
-        <div class="flash flash-{{ category }}">{{ message }}</div>
-        {% endfor %}
-      </div>
-      {% endif %}
-    {% endwith %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+          <div class="flash-stack">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }}" role="alert">{{ message }}</div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        {% endwith %}
 
-    <form method="post" class="stack">
-      <div>
-        <label class="label" for="username">Username</label>
-        <input id="username" name="username" type="text" required autofocus>
-      </div>
-      <div>
-        <label class="label" for="password">Password</label>
-        <input id="password" name="password" type="password" required>
-      </div>
-      <button type="submit" class="btn btn-primary full-width">Sign In</button>
-    </form>
+        <form method="post" class="stack">
+          <div>
+            <label class="form-label" for="username">Username</label>
+            <input id="username" name="username" type="text" required autofocus class="form-control">
+          </div>
+          <div>
+            <label class="form-label" for="password">Password</label>
+            <input id="password" name="password" type="password" required class="form-control">
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Sign In</button>
+        </form>
 
-    <div class="login-footer">
-      Default admin: <strong>admin</strong> / <strong>Changeme-123</strong>
+        <div class="login-footer">
+          Default admin: <strong>admin</strong> / <strong>Changeme-123</strong>
+        </div>
+      </div>
     </div>
   </div>
 </body>
 </html>
-

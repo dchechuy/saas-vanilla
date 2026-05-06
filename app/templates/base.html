@@ -1,116 +1,183 @@
 {% from "macros/user_avatar.html" import avatar %}
+{% from "macros/ui.html" import icon %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}saas-vanilla{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark">SV</div>
-        <div>
-          <div class="brand-title">saas-vanilla</div>
-          <div class="brand-subtitle">Prototype foundation</div>
+  <div class="page">
+    <aside class="navbar navbar-vertical navbar-expand-lg ds-sidebar">
+      <div class="container-fluid">
+        <div class="navbar-brand navbar-brand-autodark">
+          <div class="brand">
+            <div class="brand-mark">SV</div>
+            <div>
+              <div class="brand-title">saas-vanilla</div>
+              <div class="brand-subtitle">Prototype foundation</div>
+            </div>
+          </div>
         </div>
-      </div>
+        <div class="navbar-nav flex-column">
+          <div class="nav-section">
+            <div class="nav-label">General</div>
+            <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
+              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('dashboard') }}</span>
+              <span class="nav-link-title">Dashboard</span>
+            </a>
+          </div>
 
-      <nav class="nav-section">
-        <div class="nav-label">General</div>
-        <a href="{{ url_for('main.dashboard') }}" class="nav-link">Dashboard</a>
-      </nav>
+          {% if has_access('users', 'view') or has_access('permissions', 'view') %}
+          <div class="nav-section">
+            <div class="nav-label">User Management</div>
+            {% if has_access('users', 'view') %}
+            <a href="{{ url_for('users.list_users') }}" class="nav-link {% if request.endpoint in ['users.list_users', 'users.add_user', 'users.edit_user', 'users.change_password'] %}active{% endif %}">
+              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('users') }}</span>
+              <span class="nav-link-title">Users</span>
+            </a>
+            {% endif %}
+            {% if has_access('permissions', 'view') %}
+            <a href="{{ url_for('users.list_users') }}#permissions" class="nav-link" data-ds-nav-hash="{{ url_for('users.list_users') }}#permissions">
+              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('shield') }}</span>
+              <span class="nav-link-title">Permissions</span>
+            </a>
+            {% endif %}
+          </div>
+          {% endif %}
 
-      {% if has_access('users', 'view') or has_access('permissions', 'view') %}
-      <nav class="nav-section">
-        <div class="nav-label">User Management</div>
-        {% if has_access('users', 'view') %}<a href="{{ url_for('users.list_users') }}" class="nav-link">Users</a>{% endif %}
-        {% if has_access('permissions', 'view') %}<a href="{{ url_for('users.list_users') }}#permissions" class="nav-link">Permissions</a>{% endif %}
-      </nav>
-      {% endif %}
+          {% if has_access('models', 'view') or has_access('attributes', 'view') or has_access('integrations', 'view') %}
+          <div class="nav-section">
+            <div class="nav-label">System Config</div>
+            <a href="{{ url_for('models.list_models') }}#llm-models" class="nav-link {% if request.endpoint == 'models.list_models' %}active{% endif %}" data-ds-nav-hash="{{ url_for('models.list_models') }}#llm-models">
+              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('brain') }}</span>
+              <span class="nav-link-title">LLM Models</span>
+            </a>
+            <a href="{{ url_for('models.list_models') }}#attributes" class="nav-link" data-ds-nav-hash="{{ url_for('models.list_models') }}#attributes">
+              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('tags') }}</span>
+              <span class="nav-link-title">Attributes</span>
+            </a>
+            <a href="{{ url_for('models.list_models') }}#integrations" class="nav-link" data-ds-nav-hash="{{ url_for('models.list_models') }}#integrations">
+              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('plug') }}</span>
+              <span class="nav-link-title">Integrations</span>
+            </a>
+          </div>
+          {% endif %}
 
-      {% if has_access('models', 'view') or has_access('attributes', 'view') or has_access('integrations', 'view') %}
-      <nav class="nav-section">
-        <div class="nav-label">System Config</div>
-        <a href="{{ url_for('models.list_models') }}" class="nav-link">LLM Models</a>
-        <a href="{{ url_for('models.list_models') }}#attributes" class="nav-link">Attributes</a>
-        <a href="{{ url_for('models.list_models') }}#integrations" class="nav-link">Integrations</a>
-      </nav>
-      {% endif %}
-
-      {% if has_access('help', 'view') %}
-      <nav class="nav-section">
-        <div class="nav-label">Help</div>
-        <a href="{{ url_for('help.release_notes') }}" class="nav-link">Release Notes</a>
-        <a href="{{ url_for('help.quick_start') }}" class="nav-link">Quick Start Guide</a>
-        <a href="{{ url_for('help.user_manual') }}" class="nav-link">User Manual</a>
-        <a href="{{ url_for('help.architecture') }}" class="nav-link">Architecture</a>
-        <a href="{{ url_for('help.dependencies') }}" class="nav-link">Python Dependencies</a>
-      </nav>
-      {% endif %}
-    </aside>
-
-    <main class="main-shell">
-      <header class="topbar">
-        <div>
-          <h1 class="page-heading">{% block page_heading %}saas-vanilla{% endblock %}</h1>
-          {% if breadcrumbs %}
-          <div class="breadcrumbs">
-            {% for crumb in breadcrumbs %}
-              {% if crumb.url %}
-              <a href="{{ crumb.url }}">{{ crumb.label }}</a>
-              {% else %}
-              <span>{{ crumb.label }}</span>
-              {% endif %}
-              {% if not loop.last %}<span>&gt;</span>{% endif %}
-            {% endfor %}
+          {% if has_access('help', 'view') %}
+          <div class="nav-section">
+            <div class="nav-label">Help</div>
+            <a href="{{ url_for('help.release_notes') }}" class="nav-link {% if request.endpoint == 'help.release_notes' %}active{% endif %}">
+              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('sparkles') }}</span>
+              <span class="nav-link-title">Release Notes</span>
+            </a>
+            <a href="{{ url_for('help.quick_start') }}" class="nav-link {% if request.endpoint == 'help.quick_start' %}active{% endif %}">
+              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('rocket') }}</span>
+              <span class="nav-link-title">Quick Start Guide</span>
+            </a>
+            <a href="{{ url_for('help.user_manual') }}" class="nav-link {% if request.endpoint == 'help.user_manual' %}active{% endif %}">
+              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('book') }}</span>
+              <span class="nav-link-title">User Manual</span>
+            </a>
+            <a href="{{ url_for('help.architecture') }}" class="nav-link {% if request.endpoint == 'help.architecture' %}active{% endif %}">
+              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('settings') }}</span>
+              <span class="nav-link-title">Architecture</span>
+            </a>
+            <a href="{{ url_for('help.dependencies') }}" class="nav-link {% if request.endpoint == 'help.dependencies' %}active{% endif %}">
+              <span class="nav-link-icon d-md-none d-lg-inline-block">{{ icon('circle-check') }}</span>
+              <span class="nav-link-title">Python Dependencies</span>
+            </a>
           </div>
           {% endif %}
         </div>
+      </div>
+    </aside>
 
-        {% if current_user.is_authenticated %}
-        <details class="user-menu">
-          <summary>
-            {{ avatar(current_user, 'md') }}
-          </summary>
-          <div class="user-menu-panel">
-            <div class="user-menu-header">
-              {{ avatar(current_user, 'lg') }}
-              <div>
-                <div class="user-name">{{ current_user.display_name }}</div>
-                <div class="user-meta">{{ current_user.role }}</div>
-                <div class="user-meta">{{ current_user.email }}</div>
+    <div class="page-wrapper ds-page-wrapper">
+      <header class="navbar navbar-expand-md d-print-none ds-topbar">
+        <div class="container-xl">
+          <div class="w-100 d-flex align-items-start justify-content-between gap-3">
+            <div>
+              <div class="page-pretitle">Universal SaaS Template</div>
+              <h1 class="page-title">{% block page_heading %}saas-vanilla{% endblock %}</h1>
+              {% if breadcrumbs %}
+              <div class="breadcrumbs">
+                {% for crumb in breadcrumbs %}
+                  {% if crumb.url %}
+                  <a href="{{ crumb.url }}">{{ crumb.label }}</a>
+                  {% else %}
+                  <span>{{ crumb.label }}</span>
+                  {% endif %}
+                  {% if not loop.last %}<span>/</span>{% endif %}
+                {% endfor %}
               </div>
+              {% endif %}
             </div>
-            <form method="post" action="{{ url_for('users.upload_avatar_self') }}" enctype="multipart/form-data" class="stack-sm">
-              <label class="label">Replace Avatar</label>
-              <input type="file" name="avatar" accept=".jpg,.jpeg,.png,.gif,.webp">
-              <button type="submit" class="btn btn-secondary btn-sm">Upload</button>
-            </form>
-            <a href="{{ url_for('users.change_password') }}" class="btn btn-secondary btn-sm full-width">Change Password</a>
-            <form method="post" action="{{ url_for('auth.logout') }}">
-              <button type="submit" class="btn btn-danger btn-sm full-width">Logout</button>
-            </form>
+            {% if current_user.is_authenticated %}
+            <details class="user-menu">
+              <summary>
+                <div class="ds-user-trigger">
+                  {{ avatar(current_user, 'md') }}
+                  <div class="ds-user-trigger-copy">
+                    <div class="user-name">{{ current_user.display_name }}</div>
+                    <div class="user-meta">{{ current_user.role }}</div>
+                  </div>
+                </div>
+              </summary>
+              <div class="user-menu-panel card">
+                <div class="user-menu-header">
+                  {{ avatar(current_user, 'lg') }}
+                  <div>
+                    <div class="user-name">{{ current_user.display_name }}</div>
+                    <div class="user-meta">{{ current_user.role }}</div>
+                    <div class="user-meta">{{ current_user.email }}</div>
+                  </div>
+                </div>
+                <form method="post" action="{{ url_for('users.upload_avatar_self') }}" enctype="multipart/form-data" class="stack-sm">
+                  <label class="form-label">Replace Avatar</label>
+                  <input type="file" name="avatar" accept=".jpg,.jpeg,.png,.gif,.webp" class="form-control">
+                  <button type="submit" class="btn btn-outline-primary btn-sm">Upload</button>
+                </form>
+                <a href="{{ url_for('users.change_password') }}" class="btn btn-outline-secondary btn-sm w-100">
+                  <span class="btn-icon">{{ icon('shield', 'icon') }}</span>
+                  Change Password
+                </a>
+                <form method="post" action="{{ url_for('auth.logout') }}">
+                  <button type="submit" class="btn btn-danger btn-sm w-100">
+                    <span class="btn-icon">{{ icon('logout', 'icon') }}</span>
+                    Logout
+                  </button>
+                </form>
+              </div>
+            </details>
+            {% endif %}
           </div>
-        </details>
-        {% endif %}
+        </div>
       </header>
 
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class="flash-stack">
-          {% for category, message in messages %}
-          <div class="flash flash-{{ category }}">{{ message }}</div>
-          {% endfor %}
-        </div>
-        {% endif %}
-      {% endwith %}
+      <main class="page-body">
+        <div class="container-xl">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-stack">
+              {% for category, message in messages %}
+              <div class="alert alert-{{ 'danger' if category == 'error' else category }} ds-alert" role="alert">{{ message }}</div>
+              {% endfor %}
+            </div>
+            {% endif %}
+          {% endwith %}
 
-      {% block content %}{% endblock %}
-    </main>
-  </div>
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+    </div>
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
-
