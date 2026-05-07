@@ -1,3 +1,4 @@
+import uuid
 import requests as http_requests
 from flask import (Blueprint, abort, flash, jsonify, redirect,
                    render_template, request, url_for)
@@ -14,9 +15,13 @@ _SKUNK_TIMEOUT = 30  # seconds
 
 
 def _call_skunkbox(integration, skunkbox_agent_id: int,
-                   message: str, session_id: str | None) -> dict:
+                   message: str, session_id: str,
+                   user_full_name: str = "", username: str = "") -> dict:
     """POST to skunkBOX /api/v1/chat/messages. Returns the JSON body or raises."""
     base_url = (integration.base_url or "").rstrip("/")
+    # Normalise: strip trailing /api/v1 so the path below never doubles it
+    if base_url.endswith("/api/v1"):
+        base_url = base_url[:-len("/api/v1")]
     if not base_url:
         raise ValueError("Integration has no base URL configured.")
 
@@ -26,10 +31,11 @@ def _call_skunkbox(integration, skunkbox_agent_id: int,
 
     payload = {
         "persona_id": skunkbox_agent_id,
+        "session_id": session_id,
+        "user_full_name": user_full_name,
+        "username": username,
         "message": message,
     }
-    if session_id:
-        payload["session_id"] = session_id
 
     resp = http_requests.post(
         f"{base_url}/api/v1/chat/messages",
@@ -89,6 +95,7 @@ def new_conversation():
         ai_agent_id=agent.id,
         user_id=current_user.id,
         title=f"Conversation with {agent.name}",
+        skunkbox_session_id=str(uuid.uuid4()),
     )
     db.session.add(conv)
     db.session.commit()
@@ -164,6 +171,8 @@ def send_message(conversation_id):
             skunkbox_agent_id=agent.skunkbox_agent_id,
             message=content,
             session_id=conv.skunkbox_session_id,
+            user_full_name=current_user.display_name or current_user.username,
+            username=current_user.username,
         )
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 502

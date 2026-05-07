@@ -170,7 +170,7 @@ function appendUserBubble(text) {
 }
 
 function appendAgentBubble(content) {
-  const agentAvatarHtml = {{ ('<img src="' ~ url_for('static', filename='uploads/agent_avatars/' ~ agent.avatar_filename) ~ '" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">') if agent.avatar_filename else ('<div style="width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0">' ~ agent.name[0].upper() ~ '</div>') | tojson }};
+  const agentAvatarHtml = {{ (('<img src="' ~ url_for('static', filename='uploads/agent_avatars/' ~ agent.avatar_filename) ~ '" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">') if agent.avatar_filename else ('<div style="width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0">' ~ agent.name[0].upper() ~ '</div>')) | tojson }};
   const wrap = document.createElement('div');
   wrap.className = 'chat-bubble-wrap chat-bubble-wrap--agent';
   wrap.innerHTML = `
