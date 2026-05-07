@@ -148,7 +148,7 @@
 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;font-size:13px;color:var(--muted)">
   <div>
     {% if total > 0 %}
-    Showing {{ ((page - 1) * per_page) + 1 }}–{{ [page * per_page, total] | min }} of {{ total }} document{{ 's' if total != 1 else '' }}
+    Showing {{ ((page - 1) * per_page) + 1 }}–{{ (page * per_page) if (page * per_page) < total else total }} of {{ total }} document{{ 's' if total != 1 else '' }}
     {% endif %}
   </div>
 
