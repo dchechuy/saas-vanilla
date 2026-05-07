@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import icon, empty_state %}
+{% block title %}AI Conversations - saas-vanilla{% endblock %}
+{% block content %}
+
+<div class="sb-page-header">
+  <div>
+    <h1 class="page-title">Conversations</h1>
+    <p class="muted" style="margin:4px 0 0">Chat with your AI agents.</p>
+  </div>
+  {% if ai_agents %}
+  <button class="btn btn-primary" type="button"
+          onclick="document.getElementById('new-conv-overlay').style.display='flex';document.body.style.overflow='hidden'">
+    + New Conversation
+  </button>
+  {% endif %}
+</div>
+
+{% if conversations %}
+<div class="card" style="padding:0">
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table" style="margin:0">
+      <thead>
+        <tr>
+          <th style="width:48px"></th>
+          <th>Title</th>
+          <th>Agent</th>
+          <th>Last updated</th>
+          <th class="w-1"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for conv in conversations %}
+        <tr style="cursor:pointer" onclick="window.location='{{ url_for('agents.view_conversation', conversation_id=conv.id) }}'">
+          <td onclick="event.stopPropagation()">
+            {% if conv.agent and conv.agent.avatar_filename %}
+            <img src="{{ url_for('static', filename='uploads/agent_avatars/' ~ conv.agent.avatar_filename) }}"
+                 style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">
+            {% else %}
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);
+                        display:flex;align-items:center;justify-content:center;
+                        font-weight:700;font-size:14px;color:#fff">
+              {{ conv.agent.name[0].upper() if conv.agent else '?' }}
+            </div>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('agents.view_conversation', conversation_id=conv.id) }}"
+               style="font-weight:600;color:var(--text);text-decoration:none"
+               onclick="event.stopPropagation()">
+              {{ conv.title or 'Untitled conversation' }}
+            </a>
+          </td>
+          <td style="font-size:13px;color:var(--muted)">
+            {{ conv.agent.name if conv.agent else '—' }}
+          </td>
+          <td>
+            <span class="local-time" data-utc="{{ conv.updated_at.isoformat() }}">
+              {{ conv.updated_at.strftime('%Y-%m-%d') }}
+            </span>
+          </td>
+          <td onclick="event.stopPropagation()">
+            <div class="overflow-menu">
+              <button class="overflow-btn" onclick="toggleMenu(event,'cmenu-{{ conv.id }}')">⋮</button>
+              <div class="overflow-dropdown" id="cmenu-{{ conv.id }}">
+                <a href="{{ url_for('agents.view_conversation', conversation_id=conv.id) }}"
+                   class="overflow-item">Open</a>
+                <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+                <form method="post" action="{{ url_for('agents.archive_conversation', conversation_id=conv.id) }}"
+                      id="carchive-{{ conv.id }}" style="margin:0">
+                  <button type="button" class="overflow-item overflow-item-danger"
+                          onclick="confirmAction(
+                            'Archive conversation',
+                            'Archive &quot;{{ conv.title | replace('\"','') }}&quot;? It will no longer appear in this list.',
+                            'carchive-{{ conv.id }}',
+                            'Archive',
+                            'btn-danger'
+                          )">Archive</button>
+                </form>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+
+{% if ai_agents %}
+<div class="card">
+  <div class="card-body" style="padding:64px 24px;text-align:center">
+    <div style="width:64px;height:64px;border-radius:50%;background:var(--accent);
+                display:flex;align-items:center;justify-content:center;
+                margin:0 auto 20px;font-size:28px;color:#fff">
+      {{ icon('robot','') }}
+    </div>
+    <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px">No conversations yet</div>
+    <div style="font-size:14px;color:var(--muted);margin-bottom:24px">Start a conversation with one of your AI agents.</div>
+    <button class="btn btn-primary"
+            onclick="document.getElementById('new-conv-overlay').style.display='flex';document.body.style.overflow='hidden'">
+      + New Conversation
+    </button>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <div class="card-body" style="padding:64px 24px;text-align:center">
+    <div style="width:64px;height:64px;border-radius:50%;background:var(--panel);border:1px solid var(--border);
+                display:flex;align-items:center;justify-content:center;
+                margin:0 auto 20px;font-size:28px;color:var(--muted)">
+      {{ icon('robot','') }}
+    </div>
+    <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px">No agents configured</div>
+    <div style="font-size:14px;color:var(--muted)">An admin must configure at least one AI agent before you can start a conversation.</div>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+{# ── New Conversation overlay ── #}
+<div id="new-conv-overlay"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);
+            z-index:1000;align-items:center;justify-content:center;padding:24px"
+     onclick="if(event.target===this){this.style.display='none';document.body.style.overflow=''}">
+  <div style="background:var(--panel);border-radius:12px;width:100%;max-width:420px;
+              box-shadow:0 8px 40px rgba(0,0,0,0.18)"
+       onclick="event.stopPropagation()">
+    <div style="padding:20px 24px 14px;border-bottom:1px solid var(--border);
+                display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:16px;font-weight:700;color:var(--text)">New Conversation</div>
+      <button style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)"
+              onclick="document.getElementById('new-conv-overlay').style.display='none';document.body.style.overflow=''">×</button>
+    </div>
+    <form method="post" action="{{ url_for('agents.new_conversation') }}">
+      <div style="padding:20px 24px">
+        <label class="form-label">Choose an agent</label>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          {% for agent in ai_agents %}
+          <label style="display:flex;align-items:center;gap:12px;padding:12px 14px;
+                        border:1px solid var(--border);border-radius:8px;cursor:pointer;
+                        background:var(--bg);transition:border-color 0.15s"
+                 onmouseover="this.style.borderColor='var(--accent)'"
+                 onmouseout="this.style.borderColor='var(--border)'">
+            <input type="radio" name="agent_id" value="{{ agent.id }}"
+                   {% if loop.first %}checked{% endif %}
+                   style="accent-color:var(--accent)">
+            {% if agent.avatar_filename %}
+            <img src="{{ url_for('static', filename='uploads/agent_avatars/' ~ agent.avatar_filename) }}"
+                 style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0">
+            {% else %}
+            <div style="width:38px;height:38px;border-radius:50%;background:var(--accent);flex-shrink:0;
+                        display:flex;align-items:center;justify-content:center;
+                        font-weight:700;font-size:15px;color:#fff">
+              {{ agent.name[0].upper() }}
+            </div>
+            {% endif %}
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--text)">{{ agent.name }}</div>
+              {% if agent.description %}
+              <div style="font-size:12px;color:var(--muted)">{{ agent.description }}</div>
+              {% endif %}
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div style="padding:0 24px 20px;display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-secondary"
+                onclick="document.getElementById('new-conv-overlay').style.display='none';document.body.style.overflow=''">Cancel</button>
+        <button type="submit" class="btn btn-primary">Start Conversation</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

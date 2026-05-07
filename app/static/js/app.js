@@ -114,6 +114,49 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
+  // ── Overflow menus ──────────────────────────────────────────────
+  window.toggleMenu = (event, id) => {
+    event.stopPropagation();
+    const btn  = event.currentTarget;
+    const menu = document.getElementById(id);
+    const isOpen = menu.style.display === "block";
+    document.querySelectorAll(".overflow-dropdown").forEach((m) => (m.style.display = "none"));
+    if (isOpen) return;
+
+    // Measure height off-screen before positioning
+    menu.style.visibility = "hidden";
+    menu.style.display    = "block";
+    const menuH = menu.offsetHeight;
+    menu.style.display    = "none";
+    menu.style.visibility = "";
+
+    const rect       = btn.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    menu.style.right = window.innerWidth - rect.right + "px";
+
+    if (spaceBelow >= menuH + 8 || spaceBelow >= spaceAbove) {
+      menu.style.top    = rect.bottom + 4 + "px";
+      menu.style.bottom = "";
+    } else {
+      menu.style.bottom = window.innerHeight - rect.top + 4 + "px";
+      menu.style.top    = "";
+    }
+    menu.style.display = "block";
+  };
+
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".overflow-dropdown").forEach((m) => (m.style.display = "none"));
+  });
+
+  // ── "Show Inactive" toggle for LLM Models table ─────────────────
+  window.filterInactive = () => {
+    const show = document.getElementById("show-inactive")?.checked;
+    document.querySelectorAll("#llm-models-tbody tr[data-active]").forEach((row) => {
+      if (row.dataset.active === "false") row.style.display = show ? "" : "none";
+    });
+  };
+
   // UTC → local time conversion for elements with class "local-time" and data-utc attribute.
   // Matches the skunkBOX convention. Server always stores UTC; browser renders in user's timezone.
   document.querySelectorAll(".local-time[data-utc]").forEach((el) => {

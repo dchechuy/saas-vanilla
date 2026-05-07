@@ -1,10 +1,27 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+import os
+import uuid
+
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from ..access import permission_required, user_has_access
 from ..crypto import encrypt_value
 from ..extensions import db
-from ..models import Attribute, Integration, LlmModel
+from ..models import AiAgent, Attribute, Integration, LlmModel
+
+_ALLOWED_IMG_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+
+def _save_agent_avatar(file_storage) -> str | None:
+    if not file_storage or not file_storage.filename:
+        return None
+    ext = os.path.splitext(file_storage.filename)[1].lower()
+    if ext not in _ALLOWED_IMG_EXTS:
+        return None
+    filename = f"{uuid.uuid4().hex}{ext}"
+    folder = current_app.config["AGENT_AVATAR_UPLOAD_FOLDER"]
+    file_storage.save(os.path.join(folder, filename))
+    return filename
 
 models_bp = Blueprint("models", __name__, url_prefix="/models")
 
@@ -19,22 +36,31 @@ def list_models():
     can_view_models = user_has_access("models", "view")
     can_view_attributes = user_has_access("attributes", "view")
     can_view_integrations = user_has_access("integrations", "view")
+    can_view_agents = user_has_access("agents", "view")
 
-    if not any([can_view_models, can_view_attributes, can_view_integrations]):
+    if not any([can_view_models, can_view_attributes, can_view_integrations, can_view_agents]):
         flash("You do not have permission to access this page.", "error")
         return redirect(url_for("main.dashboard"))
+
+    all_integrations = Integration.query.order_by(
+        Integration.category, Integration.provider, Integration.name
+    ).all() if (can_view_integrations or can_view_agents) else []
 
     return render_template(
         "models/list.html",
         llm_models=LlmModel.query.order_by(LlmModel.name).all() if can_view_models else [],
         attributes=Attribute.query.order_by(Attribute.category, Attribute.name).all() if can_view_attributes else [],
-        integrations=Integration.query.order_by(Integration.category, Integration.provider, Integration.name).all() if can_view_integrations else [],
+        integrations=all_integrations if can_view_integrations else [],
+        ai_agents=AiAgent.query.order_by(AiAgent.name).all() if can_view_agents else [],
+        all_integrations=all_integrations,  # for agent add/edit modals
         can_view_models=can_view_models,
         can_view_attributes=can_view_attributes,
         can_view_integrations=can_view_integrations,
+        can_view_agents=can_view_agents,
         breadcrumbs=[
             {"label": "Home", "url": url_for("main.dashboard")},
-            {"label": "Administration", "url": None},
+            {"label": "System Config", "url": url_for("models.list_models")},
+            {"label": "LLM Models", "url": None},
         ],
     )
 
@@ -108,38 +134,56 @@ def update_llm_model(model_id):
     return _redirect_to_system_config()
 
 
-@models_bp.route("/attributes/add", methods=["POST"])
+@models_bp.route("/llm/<int:model_id>/toggle", methods=["POST"])
 @login_required
-@permission_required("attributes", "edit")
-def add_attribute():
-    category = request.form.get("category", "").strip()
-    name = request.form.get("name", "").strip()
-    if not category or not name:
-        flash("Attribute category and name are required.", "error")
-    elif Attribute.query.filter_by(category=category, name=name).first():
-        flash("That attribute already exists.", "error")
-    else:
-        db.session.add(
-            Attribute(
-                category=category,
-                name=name,
-                description=request.form.get("description", "").strip() or None,
-            )
-        )
-        db.session.commit()
-        flash("Attribute added.", "success")
-    return _redirect_to_system_config("attributes")
-
-
-@models_bp.route("/attributes/<int:attribute_id>/toggle", methods=["POST"])
-@login_required
-@permission_required("attributes", "edit")
-def toggle_attribute(attribute_id):
-    attribute = db.get_or_404(Attribute, attribute_id)
-    attribute.is_active = not attribute.is_active
+@permission_required("models", "edit")
+def toggle_llm_model(model_id):
+    model = db.get_or_404(LlmModel, model_id)
+    model.is_active = not model.is_active
     db.session.commit()
-    flash(f"Attribute '{attribute.name}' updated.", "success")
-    return _redirect_to_system_config("attributes")
+    state = "activated" if model.is_active else "deactivated"
+    flash(f"Model '{model.name}' {state}.", "success")
+    return _redirect_to_system_config("integrations")
+
+
+@models_bp.route("/attributes/batch-save", methods=["POST"])
+@login_required
+@permission_required("attributes", "edit")
+def batch_save_attributes():
+    data = request.get_json(force=True) or {}
+    category = (data.get("category") or "").strip()
+    values = data.get("values") or []
+    deleted_ids = data.get("deleted_ids") or []
+
+    if not category:
+        return jsonify({"success": False, "error": "Category name is required."})
+
+    for attr_id in deleted_ids:
+        attr = db.session.get(Attribute, int(attr_id))
+        if attr and attr.category == category:
+            db.session.delete(attr)
+
+    for v in values:
+        name = (v.get("name") or "").strip()
+        if not name:
+            continue
+        is_active = bool(v.get("is_active", True))
+        attr_id = v.get("id")
+        if attr_id:
+            attr = db.session.get(Attribute, int(attr_id))
+            if attr and attr.category == category:
+                attr.name = name
+                attr.is_active = is_active
+        else:
+            if not Attribute.query.filter_by(category=category, name=name).first():
+                db.session.add(Attribute(category=category, name=name))
+
+    try:
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(exc)})
 
 
 @models_bp.route("/integrations/add", methods=["POST"])
@@ -207,3 +251,77 @@ def save_integration(integration_id):
     db.session.commit()
     flash(f"Integration '{integration.provider}' saved.", "success")
     return _redirect_to_system_config()
+
+
+@models_bp.route("/agents/add", methods=["POST"])
+@login_required
+@permission_required("agents", "edit")
+def add_agent():
+    name = request.form.get("name", "").strip()
+    integration_id = request.form.get("integration_id", "").strip()
+    skunkbox_agent_id_raw = request.form.get("skunkbox_agent_id", "").strip()
+    if not name or not integration_id or not skunkbox_agent_id_raw:
+        flash("Name, integration, and skunkBOX agent ID are required.", "error")
+        return _redirect_to_system_config("agents")
+    try:
+        skunkbox_agent_id = int(skunkbox_agent_id_raw)
+    except ValueError:
+        flash("skunkBOX agent ID must be an integer.", "error")
+        return _redirect_to_system_config("agents")
+
+    avatar_filename = _save_agent_avatar(request.files.get("avatar"))
+    agent = AiAgent(
+        name=name,
+        description=request.form.get("description", "").strip() or None,
+        integration_id=int(integration_id),
+        skunkbox_agent_id=skunkbox_agent_id,
+        avatar_filename=avatar_filename,
+        is_active=request.form.get("is_active", "1") == "1",
+    )
+    db.session.add(agent)
+    db.session.commit()
+    flash(f"Agent '{name}' added.", "success")
+    return _redirect_to_system_config("agents")
+
+
+@models_bp.route("/agents/<int:agent_id>/save", methods=["POST"])
+@login_required
+@permission_required("agents", "edit")
+def save_agent(agent_id):
+    agent = db.get_or_404(AiAgent, agent_id)
+    name = request.form.get("name", "").strip()
+    integration_id = request.form.get("integration_id", "").strip()
+    skunkbox_agent_id_raw = request.form.get("skunkbox_agent_id", "").strip()
+    if not name or not integration_id or not skunkbox_agent_id_raw:
+        flash("Name, integration, and skunkBOX agent ID are required.", "error")
+        return _redirect_to_system_config("agents")
+    try:
+        skunkbox_agent_id = int(skunkbox_agent_id_raw)
+    except ValueError:
+        flash("skunkBOX agent ID must be an integer.", "error")
+        return _redirect_to_system_config("agents")
+
+    new_avatar = _save_agent_avatar(request.files.get("avatar"))
+    agent.name = name
+    agent.description = request.form.get("description", "").strip() or None
+    agent.integration_id = int(integration_id)
+    agent.skunkbox_agent_id = skunkbox_agent_id
+    agent.is_active = request.form.get("is_active") == "1"
+    if new_avatar:
+        agent.avatar_filename = new_avatar
+
+    db.session.commit()
+    flash(f"Agent '{agent.name}' saved.", "success")
+    return _redirect_to_system_config("agents")
+
+
+@models_bp.route("/agents/<int:agent_id>/toggle", methods=["POST"])
+@login_required
+@permission_required("agents", "edit")
+def toggle_agent(agent_id):
+    agent = db.get_or_404(AiAgent, agent_id)
+    agent.is_active = not agent.is_active
+    db.session.commit()
+    state = "activated" if agent.is_active else "deactivated"
+    flash(f"Agent '{agent.name}' {state}.", "success")
+    return _redirect_to_system_config("agents")

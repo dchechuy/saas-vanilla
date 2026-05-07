@@ -1,5 +1,6 @@
 import os
 
+import markdown as md_lib
 from flask import Flask
 from flask_login import current_user
 
@@ -14,30 +15,42 @@ def create_app() -> Flask:
 
     os.makedirs(app.instance_path, exist_ok=True)
     os.makedirs(app.config["AVATAR_UPLOAD_FOLDER"], exist_ok=True)
+    os.makedirs(app.config["AGENT_AVATAR_UPLOAD_FOLDER"], exist_ok=True)
 
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
 
-    from .models import Attribute, Integration, LlmModel, Permission, ReleaseNote, Role, User  # noqa: F401
+    from .models import (AiAgent, AgentConversation, AgentMessage,  # noqa: F401
+                          Attribute, Integration, LlmModel,
+                          LlmRequestLog, UserActivityLog, ApiRequestLog,
+                          Permission, ReleaseNote, Role, User)
 
     @login_manager.user_loader
     def load_user(user_id: str):
         return db.session.get(User, int(user_id))
 
+    from .routes.agents import agents_bp
     from .routes.auth import auth_bp
     from .routes.help import help_bp
     from .routes.main import main_bp
     from .routes.models import models_bp
     from .routes.permissions import permissions_bp
+    from .routes.reporting import reporting_bp
     from .routes.users import users_bp
 
+    app.register_blueprint(agents_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(help_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(models_bp)
     app.register_blueprint(permissions_bp)
+    app.register_blueprint(reporting_bp)
     app.register_blueprint(users_bp)
+
+    @app.template_filter("md")
+    def render_markdown(text: str) -> str:
+        return md_lib.markdown(text or "", extensions=["tables", "fenced_code"])
 
     @app.context_processor
     def inject_permissions():

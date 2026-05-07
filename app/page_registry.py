@@ -7,6 +7,8 @@ PAGES = [
     {"slug": "models", "label": "LLM Models"},
     {"slug": "attributes", "label": "Attributes"},
     {"slug": "integrations", "label": "Integrations"},
+    {"slug": "agents", "label": "AI Agents"},
+    {"slug": "reporting", "label": "Reporting"},
     {"slug": "help", "label": "Help"},
 ]
 

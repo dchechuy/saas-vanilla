@@ -13,4 +13,5 @@ class Config:
     ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY", "")
     PORT = int(os.environ.get("PORT", "5011"))
     AVATAR_UPLOAD_FOLDER = os.path.join(BASE_DIR, "app", "static", "uploads", "avatars")
+    AGENT_AVATAR_UPLOAD_FOLDER = os.path.join(BASE_DIR, "app", "static", "uploads", "agent_avatars")
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024

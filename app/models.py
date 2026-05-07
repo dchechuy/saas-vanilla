@@ -136,6 +136,103 @@ class ReleaseNote(db.Model):
     created_by = db.relationship("User", foreign_keys=[created_by_user_id])
 
 
+class LlmRequestLog(db.Model):
+    """One row per call to an LLM model. Written by whatever code makes the call."""
+    __tablename__ = "llm_request_log"
+
+    id                = db.Column(db.Integer, primary_key=True)
+    model_id          = db.Column(db.Integer, db.ForeignKey("llm_model.id"), nullable=True)
+    model_name        = db.Column(db.String(120), nullable=True)   # snapshot at call time
+    use_case          = db.Column(db.String(80),  nullable=True)   # e.g. 'chat', 'adhoc'
+    prompt_tokens     = db.Column(db.Integer, nullable=True)
+    completion_tokens = db.Column(db.Integer, nullable=True)
+    total_tokens      = db.Column(db.Integer, nullable=True)
+    latency_ms        = db.Column(db.Integer, nullable=True)
+    status            = db.Column(db.String(20), nullable=False, default="success")  # success | error
+    error_message     = db.Column(db.Text, nullable=True)
+    created_at        = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    model = db.relationship("LlmModel", backref=db.backref("request_logs", lazy="dynamic"))
+
+
+class UserActivityLog(db.Model):
+    """One row per significant user action. Written by activity_logger.log_activity()."""
+    __tablename__ = "user_activity_log"
+
+    id         = db.Column(db.Integer, primary_key=True)
+    user_id    = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    action     = db.Column(db.String(120), nullable=False)   # e.g. 'user.login'
+    page       = db.Column(db.String(80),  nullable=True)    # friendly page name
+    ip_address = db.Column(db.String(45),  nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    user = db.relationship("User", backref=db.backref("activity_logs", lazy="dynamic"))
+
+
+class ApiRequestLog(db.Model):
+    """One row per outbound call to an external Integration. Written by whatever code calls the API."""
+    __tablename__ = "api_request_log"
+
+    id               = db.Column(db.Integer, primary_key=True)
+    integration_id   = db.Column(db.Integer, db.ForeignKey("integration.id"), nullable=True)
+    integration_name = db.Column(db.String(120), nullable=True)  # snapshot at call time
+    endpoint         = db.Column(db.String(255), nullable=True)
+    method           = db.Column(db.String(10),  nullable=True)
+    status_code      = db.Column(db.Integer, nullable=True)
+    latency_ms       = db.Column(db.Integer, nullable=True)
+    error_message    = db.Column(db.Text, nullable=True)
+    created_at       = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    integration = db.relationship("Integration", backref=db.backref("request_logs", lazy="dynamic"))
+
+
+class AiAgent(db.Model):
+    """A configured AI agent that proxies to a skunkBOX agent via an Integration."""
+    __tablename__ = "ai_agent"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    integration_id = db.Column(db.Integer, db.ForeignKey("integration.id"), nullable=False)
+    skunkbox_agent_id = db.Column(db.Integer, nullable=False)
+    avatar_filename = db.Column(db.String(255), nullable=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    integration = db.relationship("Integration", backref=db.backref("ai_agents", lazy="dynamic"))
+    conversations = db.relationship("AgentConversation", backref="agent", lazy="dynamic")
+
+
+class AgentConversation(db.Model):
+    """A conversation thread between a user and an AI agent."""
+    __tablename__ = "agent_conversation"
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=True)
+    ai_agent_id = db.Column(db.Integer, db.ForeignKey("ai_agent.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    skunkbox_session_id = db.Column(db.String(120), nullable=True)
+    is_archived = db.Column(db.Boolean, nullable=False, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    user = db.relationship("User", backref=db.backref("agent_conversations", lazy="dynamic"))
+    messages = db.relationship("AgentMessage", backref="conversation", lazy="dynamic",
+                               order_by="AgentMessage.created_at", cascade="all, delete-orphan")
+
+
+class AgentMessage(db.Model):
+    """A single message within an AgentConversation."""
+    __tablename__ = "agent_message"
+
+    id = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey("agent_conversation.id"), nullable=False)
+    role = db.Column(db.String(20), nullable=False)   # 'user' | 'assistant'
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
 def next_version(release_type: str, latest: ReleaseNote | None) -> tuple[int, int, int]:
     if latest is None:
         return (1, 0, 0)

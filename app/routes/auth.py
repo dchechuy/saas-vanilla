@@ -3,6 +3,7 @@ from datetime import datetime
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
+from ..activity_logger import log_activity
 from ..extensions import db
 from ..models import User
 
@@ -32,6 +33,7 @@ def login():
             user.last_login = datetime.utcnow()
             db.session.commit()
             login_user(user)
+            log_activity(user=user, action="user.login", page="System")
             if user.must_change_password:
                 flash("Please change the default password before continuing.", "warning")
                 return redirect(url_for("users.change_password"))
