@@ -6,6 +6,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}saas-vanilla{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="icon" type="image/png" sizes="96x96" href="{{ url_for('static', filename='favicon-96x96.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
   <script>
     (function () {
       const stored = localStorage.getItem("saas-vanilla-theme");
@@ -25,7 +30,7 @@
 <div class="layout">
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-brand" onclick="toggleSidebar()" title="Toggle sidebar">
-      <div class="brand-mark">SV</div>
+      <img class="brand-mark" src="{{ url_for('static', filename='web-app-manifest-192x192.png') }}" alt="saas-vanilla logo">
       <div class="sidebar-brand-copy">
         <div class="sidebar-brand-title">saas-vanilla</div>
         <div class="sidebar-brand-subtitle">Prototype foundation</div>
@@ -61,18 +66,9 @@
         <span class="nav-label">User Management</span>
       </a>
       {% endif %}
-      {% if has_access('models', 'view') or has_access('integrations', 'view') %}
-      <a href="{{ url_for('models.list_models') }}#integrations"
+      {% if has_access('attributes', 'view') or has_access('agents', 'view') %}
+      <a href="{{ url_for('models.list_models') }}"
          class="{{ 'active' if request.endpoint == 'models.list_models' else '' }}"
-         data-ds-nav-hash="{{ url_for('models.list_models') }}#integrations"
-         data-label="Integrations">
-        <span class="nav-icon">{{ icon('plug') }}</span>
-        <span class="nav-label">Integrations</span>
-      </a>
-      {% endif %}
-      {% if has_access('attributes', 'view') %}
-      <a href="{{ url_for('models.list_models') }}#attributes"
-         data-ds-nav-hash="{{ url_for('models.list_models') }}#attributes"
          data-label="System Config">
         <span class="nav-icon">{{ icon('tags') }}</span>
         <span class="nav-label">System Config</span>

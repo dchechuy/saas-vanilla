@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026-05-07] - Attributes Edit button fix
+
+### Bug fix
+- Fixed broken Edit button in System Config > Attributes: `{{ category | tojson }}` inside a double-quoted `onclick="..."` attribute produced unescaped `"` characters that truncated the HTML attribute value, silently breaking the JS call. Changed attribute delimiter to single quotes: `onclick='openAttrModal({{ category | tojson }})'`
+- Removed stale inner `tax-tabs` strip from the Attributes section (leftover from before the 4-tab top-level strip was added)
+- Removed stale Jinja `{% if can_view_models or can_view_integrations %}style="display:none"{% endif %}` from `config-tab-attributes` div — show/hide is now handled entirely by `switchTopTab()` JS, consistent with all other sections
+
 ## [2026-05-07] - AI Agents feature + UI polish
 
 ### AI Agents feature

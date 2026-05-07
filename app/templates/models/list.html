@@ -4,122 +4,132 @@
 {% block page_heading %}Administration{% endblock %}
 {% block content %}
 
-{% if can_view_models or can_view_integrations %}
-<div id="config-tab-integrations">
-  {% set show_model_registry = can_view_models %}
-  {% set show_third_party = can_view_integrations %}
-
-  {% if show_model_registry and show_third_party %}
-  <div class="tax-tabs" style="margin-bottom:24px">
-    <button class="tax-tab active" id="integration-tab-btn-models" type="button" onclick="switchIntegrationTab('models')">LLM Models</button>
-    <button class="tax-tab" id="integration-tab-btn-apis" type="button" onclick="switchIntegrationTab('apis')">External APIs</button>
-  </div>
+{# ── Top-level section tab strip ── #}
+{% set tab_count = (1 if can_view_agents else 0) + (1 if can_view_models else 0) + (1 if can_view_integrations else 0) + (1 if can_view_attributes else 0) %}
+{% if tab_count > 1 %}
+<div class="tax-tabs" style="margin-bottom:24px">
+  {% if can_view_agents %}
+  <button class="tax-tab" id="top-tab-btn-agents" type="button"
+          onclick="switchTopTab('agents')">AI Agents Config</button>
   {% endif %}
+  {% if can_view_models %}
+  <button class="tax-tab" id="top-tab-btn-llm" type="button"
+          onclick="switchTopTab('llm')">LLM Models</button>
+  {% endif %}
+  {% if can_view_integrations %}
+  <button class="tax-tab" id="top-tab-btn-apis" type="button"
+          onclick="switchTopTab('apis')">External APIs</button>
+  {% endif %}
+  {% if can_view_attributes %}
+  <button class="tax-tab" id="top-tab-btn-attributes" type="button"
+          onclick="switchTopTab('attributes')">Attributes</button>
+  {% endif %}
+</div>
+{% endif %}
 
-  {% if show_model_registry %}
-  <div id="integration-tab-models">
-    <div class="sb-page-header">
-      <div>
-        <h1 class="page-title">LLM Models</h1>
-      </div>
-      <div style="display:flex;align-items:center;gap:14px">
-        <label class="toggle-switch" title="Show Inactive Models">
-          <input type="checkbox" id="show-inactive" onchange="filterInactive()">
-          <span class="toggle-track"></span>
-          <span class="toggle-label">Show Inactive</span>
-        </label>
-        {% if has_access('models', 'edit') %}
-        <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#addModelModal">+ Add Model</button>
-        {% endif %}
-      </div>
+{% if can_view_models %}
+<div id="config-tab-llm" style="display:none">
+  <div class="sb-page-header">
+    <div>
+      <h1 class="page-title">LLM Models</h1>
     </div>
-
-    <div class="card" style="padding:0">
-      {% if llm_models %}
-      <div class="table-responsive">
-        <table class="table table-vcenter card-table" style="margin:0">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Deployment</th>
-              <th>Endpoint URL</th>
-              <th>API Key</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th>Default</th>
-              <th>Added</th>
-              {% if has_access('models', 'edit') %}<th class="w-1"></th>{% endif %}
-            </tr>
-          </thead>
-          <tbody id="llm-models-tbody">
-            {% for model in llm_models %}
-            <tr data-active="{{ 'true' if model.is_active else 'false' }}"
-                {% if not model.is_active %}style="display:none"{% endif %}>
-              <td><strong>{{ model.name }}</strong><div style="font-size:12px;color:var(--muted)">{{ model.provider }}</div></td>
-              <td style="font-size:13px">{{ model.deployment_name }}</td>
-              <td style="font-family:monospace;font-size:12px;color:var(--muted);white-space:nowrap"
-                  title="{{ model.endpoint_url }}">
-                {{ model.endpoint_url[:32] }}{% if model.endpoint_url|length > 32 %}…{% endif %}
-              </td>
-              <td style="font-family:monospace;color:var(--muted);letter-spacing:1px;font-size:12px">
-                {% if model.api_key_encrypted %}**********{% else %}<span class="badge text-bg-secondary-lt">Not set</span>{% endif %}
-              </td>
-              <td style="font-size:12px;color:var(--muted)">{{ model.model_type }}</td>
-              <td>
-                {% if model.is_active %}<span class="badge badge-active">Active</span>
-                {% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}
-              </td>
-              <td>
-                {% if model.is_default %}<span class="badge badge-default">Default</span>
-                {% else %}<span style="color:var(--muted);font-size:12px">—</span>{% endif %}
-              </td>
-              <td>
-                {% if model.created_at %}
-                <span class="local-time" data-utc="{{ model.created_at.isoformat() }}">{{ model.created_at.strftime('%Y-%m-%d') }}</span>
-                {% else %}—{% endif %}
-              </td>
-              {% if has_access('models', 'edit') %}
-              <td>
-                <div class="overflow-menu">
-                  <button class="overflow-btn" onclick="toggleMenu(event,'mmenu-{{ model.id }}')">⋮</button>
-                  <div class="overflow-dropdown" id="mmenu-{{ model.id }}">
-                    <button type="button" class="overflow-item"
-                            data-bs-toggle="modal" data-bs-target="#editModelModal{{ model.id }}">Edit</button>
-                    <div style="border-top:1px solid var(--border);margin:4px 0"></div>
-                    <form method="post" action="{{ url_for('models.toggle_llm_model', model_id=model.id) }}"
-                          id="mtoggle-{{ model.id }}" style="margin:0">
-                      <button type="button"
-                              class="overflow-item {% if model.is_active %}overflow-item-danger{% endif %}"
-                              onclick="confirmAction(
-                                '{{ 'Deactivate model' if model.is_active else 'Reactivate model' }}',
-                                '{{ ('Deactivate ' ~ model.name ~ '?') if model.is_active else ('Reactivate ' ~ model.name ~ '?') }}',
-                                'mtoggle-{{ model.id }}',
-                                '{{ 'Deactivate' if model.is_active else 'Reactivate' }}',
-                                '{{ 'btn-danger' if model.is_active else 'btn-primary' }}'
-                              )">
-                        {{ 'Deactivate' if model.is_active else 'Reactivate' }}
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              </td>
-              {% endif %}
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}
-      <div class="card-body">
-        {{ empty_state("No models configured", "Add the first model endpoint to make this template ready for future AI workflows.", "brain") }}
-      </div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <label class="toggle-switch" title="Show Inactive Models">
+        <input type="checkbox" id="show-inactive" onchange="filterInactive()">
+        <span class="toggle-track"></span>
+        <span class="toggle-label">Show Inactive</span>
+      </label>
+      {% if has_access('models', 'edit') %}
+      <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#addModelModal">+ Add Model</button>
       {% endif %}
     </div>
   </div>
-  {% endif %}
 
-  {% if show_third_party %}
-  <div id="integration-tab-apis" {% if show_model_registry %}style="display:none"{% endif %}>
+  {% if llm_models %}
+  <div class="card" style="padding:24px">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Deployment</th>
+          <th>Endpoint URL</th>
+          <th>API Key</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Added</th>
+          {% if has_access('models', 'edit') %}<th></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody id="llm-models-tbody">
+        {% for model in llm_models %}
+        <tr data-active="{{ 'true' if model.is_active else 'false' }}"
+            {% if not model.is_active %}style="display:none"{% endif %}>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <strong>{{ model.name }}</strong>
+              {% if model.is_default %}
+              <span class="badge badge-default" style="font-size:10px">Default</span>
+              {% endif %}
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">{{ model.provider }}</div>
+          </td>
+          <td style="font-size:13px">{{ model.deployment_name }}</td>
+          <td style="font-family:monospace;font-size:12px;color:var(--muted);white-space:nowrap"
+              title="{{ model.endpoint_url }}">
+            {{ model.endpoint_url[:32] }}{% if model.endpoint_url|length > 32 %}…{% endif %}
+          </td>
+          <td style="font-family:monospace;color:var(--muted);letter-spacing:1px;font-size:12px">
+            {% if model.api_key_encrypted %}**********{% else %}<span style="color:var(--muted);font-size:12px">Not set</span>{% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--muted)">{{ model.model_type }}</td>
+          <td>
+            {% if model.is_active %}<span class="badge badge-active">Active</span>
+            {% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}
+          </td>
+          <td>
+            {% if model.created_at %}
+            <span class="local-time" data-utc="{{ model.created_at.isoformat() }}" data-format="date">{{ model.created_at.strftime('%Y-%m-%d') }}</span>
+            {% else %}—{% endif %}
+          </td>
+          {% if has_access('models', 'edit') %}
+          <td>
+            <div class="overflow-menu">
+              <button class="overflow-btn" onclick="toggleMenu(event,'mmenu-{{ model.id }}')">⋮</button>
+              <div class="overflow-dropdown" id="mmenu-{{ model.id }}">
+                <button type="button" class="overflow-item"
+                        data-bs-toggle="modal" data-bs-target="#editModelModal{{ model.id }}">Edit</button>
+                <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+                <form method="post" action="{{ url_for('models.toggle_llm_model', model_id=model.id) }}"
+                      id="mtoggle-{{ model.id }}" style="margin:0">
+                  <button type="button"
+                          class="overflow-item {% if model.is_active %}overflow-item-danger{% endif %}"
+                          onclick="confirmAction(
+                            '{{ 'Deactivate model' if model.is_active else 'Reactivate model' }}',
+                            '{{ ('Deactivate ' ~ model.name ~ '?') if model.is_active else ('Reactivate ' ~ model.name ~ '?') }}',
+                            'mtoggle-{{ model.id }}',
+                            '{{ 'Deactivate' if model.is_active else 'Reactivate' }}',
+                            '{{ 'btn-danger' if model.is_active else 'btn-primary' }}'
+                          )">
+                    {{ 'Deactivate' if model.is_active else 'Reactivate' }}
+                  </button>
+                </form>
+              </div>
+            </div>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  {{ empty_state("No models configured", "Add the first model endpoint to make this template ready for future AI workflows.", "brain") }}
+  {% endif %}
+</div>
+{% endif %}
+
+{% if can_view_integrations %}
+<div id="config-tab-apis" style="display:none">
     <div class="sb-page-header">
       <div>
         <h1 class="page-title">External APIs</h1>
@@ -186,8 +196,6 @@
       </div>
       {% endif %}
     </div>
-  </div>
-  {% endif %}
 </div>
 {% endif %}
 
@@ -289,17 +297,14 @@
 {% endif %}
 
 {% if can_view_attributes %}
-<div id="config-tab-attributes" {% if can_view_models or can_view_integrations %}style="display:none"{% endif %}>
-  <div class="tax-tabs" style="margin-bottom:24px">
-    <button class="tax-tab active" type="button">Attributes</button>
-  </div>
+<div id="config-tab-attributes" style="display:none">
 
   <div class="sb-page-header">
     <div>
       <h1 class="page-title">Attributes</h1>
     </div>
     {% if has_access('attributes', 'edit') %}
-    <button class="btn btn-primary" onclick="openNewGroupModal()">+ New Group</button>
+    <button class="btn btn-primary" onclick="openNewGroupModal()">+ New Attribute</button>
     {% endif %}
   </div>
 
@@ -335,7 +340,7 @@
       {% if has_access('attributes', 'edit') %}
       <div style="flex-shrink:0;padding-top:1px">
         <button class="btn btn-secondary btn-sm"
-                onclick="openAttrModal({{ category | tojson }})">Edit</button>
+                onclick='openAttrModal({{ category | tojson }})'>Edit</button>
       </div>
       {% endif %}
     </div>
@@ -348,7 +353,7 @@
       <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">No attribute groups yet</div>
       <div style="font-size:13px;color:var(--muted)">Groups define reusable vocabulary that products can reference.</div>
       {% if has_access('attributes', 'edit') %}
-      <button class="btn btn-primary" style="margin-top:16px" onclick="openNewGroupModal()">+ New Group</button>
+      <button class="btn btn-primary" style="margin-top:16px" onclick="openNewGroupModal()">+ New Attribute</button>
       {% endif %}
     </div>
   </div>
@@ -395,12 +400,12 @@
        onclick="event.stopPropagation()">
     <div style="padding:20px 24px 14px;border-bottom:1px solid var(--border);
                 display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:16px;font-weight:700;color:var(--text)">New Attribute Group</div>
+      <div style="font-size:16px;font-weight:700;color:var(--text)">New Attribute</div>
       <button style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)"
               onclick="closeNewGroupModal()">×</button>
     </div>
     <div style="padding:20px 24px">
-      <label class="form-label">Group name</label>
+      <label class="form-label">Name</label>
       <input type="text" id="new-group-name" class="form-control"
              placeholder="e.g. Product Type, Region, Priority"
              onkeydown="if(event.key==='Enter') confirmNewGroup()">
@@ -408,7 +413,7 @@
     </div>
     <div style="padding:0 24px 20px;display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-secondary" onclick="closeNewGroupModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="confirmNewGroup()">Create &amp; Edit</button>
+      <button class="btn btn-primary" onclick="confirmNewGroup()">Create</button>
     </div>
   </div>
 </div>
@@ -760,53 +765,35 @@
 {% endfor %}
 {% endif %}
 <script>
-function switchIntegrationTab(tabName) {
-  const modelsTab = document.getElementById('integration-tab-models');
-  const apisTab = document.getElementById('integration-tab-apis');
-  const modelsBtn = document.getElementById('integration-tab-btn-models');
-  const apisBtn = document.getElementById('integration-tab-btn-apis');
-  const showModels = tabName === 'models';
+const _TOP_SECTIONS   = ['agents', 'llm', 'apis', 'attributes'];
+const _TOP_HASH_MAP   = { agents: '#agents', llm: '#integrations', apis: '#apis', attributes: '#attributes' };
+const _TOP_LABEL_MAP  = { agents: 'AI Agents Config', llm: 'LLM Models', apis: 'External APIs', attributes: 'Attributes' };
 
-  if (modelsTab) modelsTab.style.display = showModels ? 'block' : 'none';
-  if (apisTab) apisTab.style.display = showModels ? 'none' : 'block';
-  if (modelsBtn) modelsBtn.classList.toggle('active', showModels);
-  if (apisBtn) apisBtn.classList.toggle('active', !showModels);
-
-  history.replaceState(null, '', showModels ? '#integrations' : '#apis');
+function switchTopTab(section) {
+  _TOP_SECTIONS.forEach(s => {
+    const el  = document.getElementById('config-tab-' + s);
+    const btn = document.getElementById('top-tab-btn-' + s);
+    if (el)  el.style.display  = (s === section) ? 'block' : 'none';
+    if (btn) btn.classList.toggle('active', s === section);
+  });
+  history.replaceState(null, '', _TOP_HASH_MAP[section] || '');
+  const crumb = document.querySelector('.breadcrumb-nav .breadcrumb-current');
+  if (crumb) crumb.textContent = _TOP_LABEL_MAP[section] || section;
 }
 
 function applyHash() {
-  const integrationsTab = document.getElementById('config-tab-integrations');
-  const attributesTab   = document.getElementById('config-tab-attributes');
-  const agentsTab       = document.getElementById('config-tab-agents');
   const hash = window.location.hash;
 
-  // Hide all sections first
-  if (integrationsTab) integrationsTab.style.display = 'none';
-  if (attributesTab)   attributesTab.style.display   = 'none';
-  if (agentsTab)       agentsTab.style.display        = 'none';
+  // Map hash → section id
+  const hashToSection = { '#agents': 'agents', '#integrations': 'llm', '#apis': 'apis', '#attributes': 'attributes' };
+  let activeSection = hashToSection[hash];
 
-  if (hash === '#attributes') {
-    if (attributesTab) attributesTab.style.display = 'block';
-  } else if (hash === '#integrations' || hash === '#apis') {
-    if (integrationsTab) integrationsTab.style.display = 'block';
-    switchIntegrationTab(hash === '#apis' ? 'apis' : 'models');
-  } else {
-    // Default: AI Agents Config (#agents or no hash)
-    if (agentsTab) agentsTab.style.display = 'block';
-    else if (integrationsTab) integrationsTab.style.display = 'block';
+  // Default to first rendered tab when no matching hash
+  if (!activeSection || !document.getElementById('config-tab-' + activeSection)) {
+    activeSection = _TOP_SECTIONS.find(s => !!document.getElementById('config-tab-' + s)) || 'llm';
   }
 
-  // Sync the third breadcrumb node to the active tab
-  const tabLabels = {
-    '#attributes':   'Attributes',
-    '#integrations': 'LLM Models',
-    '#apis':         'External APIs',
-    '#agents':       'AI Agents Config',
-  };
-  const label = tabLabels[hash] || (agentsTab ? 'AI Agents Config' : 'LLM Models');
-  const crumb = document.querySelector('.breadcrumb-nav .breadcrumb-current');
-  if (crumb) crumb.textContent = label;
+  switchTopTab(activeSection);
 }
 
 document.addEventListener('DOMContentLoaded', applyHash);
@@ -962,12 +949,12 @@ function confirmNewGroup() {
   const errEl     = document.getElementById('new-group-error');
   const category  = nameInput.value.trim();
   if (!category) {
-    errEl.textContent   = 'Group name is required.';
+    errEl.textContent   = 'Name is required.';
     errEl.style.display = 'block';
     return;
   }
   if (ATTR_DATA[category] !== undefined) {
-    errEl.textContent   = 'A group with that name already exists.';
+    errEl.textContent   = 'An attribute with that name already exists.';
     errEl.style.display = 'block';
     return;
   }
