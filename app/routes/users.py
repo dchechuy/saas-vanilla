@@ -4,6 +4,7 @@ from flask import Blueprint, abort, current_app, flash, redirect, render_templat
 from flask_login import current_user, login_required
 
 from ..access import permission_required
+from ..activity_logger import log_activity
 from ..extensions import db
 from ..models import Role, User
 from ..page_registry import PAGES
@@ -67,6 +68,7 @@ def add_user():
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
+            log_activity(current_user, "user.created", page="User Management")
             flash(f"User '{username}' created.", "success")
             return redirect(url_for("users.list_users"))
 
@@ -106,6 +108,7 @@ def edit_user(user_id):
                     user.set_password(new_password)
                     user.must_change_password = False
                 db.session.commit()
+                log_activity(current_user, "user.updated", page="User Management")
                 flash(f"User '{username}' updated.", "success")
                 return redirect(url_for("users.list_users"))
 
@@ -130,6 +133,7 @@ def change_password():
             current_user.set_password(new_password)
             current_user.must_change_password = False
             db.session.commit()
+            log_activity(current_user, "user.password_changed", page="User Management")
             flash("Password updated.", "success")
             return redirect(url_for("main.dashboard"))
 
@@ -146,6 +150,8 @@ def toggle_user(user_id):
     else:
         user.is_active = not user.is_active
         db.session.commit()
+        action = "user.activated" if user.is_active else "user.deactivated"
+        log_activity(current_user, action, page="User Management")
         flash(f"User '{user.username}' {'activated' if user.is_active else 'deactivated'}.", "success")
     return redirect(url_for("users.list_users"))
 

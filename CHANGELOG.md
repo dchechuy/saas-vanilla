@@ -1,5 +1,34 @@
 # Changelog
 
+## [2026-05-07] - Learning Center
+
+### Feature
+- Added **Learning Center** tab to the AI Agents section (alongside Conversations)
+- New routes in `agents.py`: `learning_center()` and `learning_center_doc(doc_id)`
+- `_get_docs_integration()` — finds the active integration with `use_case = "Documents"`
+- `_call_skunkbox_get()` — generic GET helper to skunkBOX API (same URL normalisation as chat)
+- **List view** (`/agents/learning-center`): document table with file-type icon, title, collection, type badge, status badge, pages, upload date; pagination at 25/page with smart page-number range
+- **Detail view** (`/agents/learning-center/<doc_id>`): two-column layout — preview panel (text `content_preview`, PDF iframe, image, or "no preview" fallback) + full metadata panel showing all fields returned by the API (known fields with friendly labels first, then any extras auto-labelled from the key name)
+- Empty state if no Documents integration is configured, with link to External APIs config
+- Sidebar AI Agents nav link stays highlighted on both Learning Center routes
+
+## [2026-05-07] - Integration Use Case field
+
+### Feature
+- Added `use_case` column to `Integration` model (`String(40)`, default `"AI Agents"`)
+- Added Alembic migration `c2d3e4f5g6h7_add_integration_use_case.py` (chains off `b1c2d3e4f5g6`)
+- Add / Edit Integration modals now include a required **Use Case** dropdown with two options: `AI Agents` and `Documents`
+- Use Case displayed as a colour-coded badge in the External APIs table (green for AI Agents, purple for Documents)
+- Routes `add_integration` and `save_integration` in `models.py` now read and persist `use_case`
+
+## [2026-05-07] - Activity logging for conversations, user management, system config
+
+### Activity logging
+- Added `log_activity` calls to `app/routes/users.py`: user created, updated, password changed, activated, deactivated
+- Added `log_activity` calls to `app/routes/agents.py`: conversation started, archived
+- Added `log_activity` calls to `app/routes/models.py`: LLM model created/updated/activated/deactivated, integration created/updated, AI agent created/updated/activated/deactivated, attributes saved
+- Expanded `ACTION_LABELS` in `app/activity_logger.py` to cover all new action keys
+
 ## [2026-05-07] - Attributes Edit button fix
 
 ### Bug fix

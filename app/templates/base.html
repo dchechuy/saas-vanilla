@@ -49,7 +49,7 @@
       {% if has_access('agents', 'view') %}
       <div class="nav-section-label">AI Agents</div>
       <a href="{{ url_for('agents.list_conversations') }}"
-         class="{{ 'active' if request.endpoint in ['agents.list_conversations', 'agents.view_conversation', 'agents.new_conversation'] else '' }}"
+         class="{{ 'active' if request.endpoint in ['agents.list_conversations', 'agents.view_conversation', 'agents.new_conversation', 'agents.learning_center', 'agents.learning_center_doc'] else '' }}"
          data-label="Conversations">
         <span class="nav-icon">{{ icon('message') }}</span>
         <span class="nav-label">Conversations</span>

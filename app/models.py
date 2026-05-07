@@ -111,6 +111,7 @@ class Integration(db.Model):
     name = db.Column(db.String(120), unique=True, nullable=False)
     category = db.Column(db.String(80), nullable=False)
     provider = db.Column(db.String(80), nullable=False)
+    use_case = db.Column(db.String(40), nullable=False, default="AI Agents")
     description = db.Column(db.String(255), nullable=True)
     api_key_encrypted = db.Column(db.Text, nullable=True)
     base_url = db.Column(db.String(255), nullable=True)

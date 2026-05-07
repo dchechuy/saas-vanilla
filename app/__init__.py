@@ -76,6 +76,10 @@ def _seed_defaults() -> None:
     existing_cols = {c["name"] for c in inspector.get_columns("user")}
     if "updated_at" not in existing_cols:
         return  # Schema is out of date — run `flask db upgrade` first
+    if inspector.has_table("integration"):
+        integration_cols = {c["name"] for c in inspector.get_columns("integration")}
+        if "use_case" not in integration_cols:
+            return  # Schema is out of date — run `flask db upgrade` first
 
     admin_role = Role.query.filter_by(name="admin").first()
     if not admin_role:
@@ -130,22 +134,5 @@ def _seed_defaults() -> None:
         exists = Attribute.query.filter_by(category=category, name=name).first()
         if not exists:
             db.session.add(Attribute(category=category, name=name, description=description))
-
-    default_integrations = [
-        ("openai", "LLM", "OpenAI", "Store an OpenAI API key and endpoint details."),
-        ("anthropic", "LLM", "Anthropic", "Store an Anthropic API key for future prototypes."),
-        ("slack", "Collaboration", "Slack", "Store a Slack bot token or app secret."),
-    ]
-    for name, category, provider, description in default_integrations:
-        exists = Integration.query.filter_by(name=name).first()
-        if not exists:
-            db.session.add(
-                Integration(
-                    name=name,
-                    category=category,
-                    provider=provider,
-                    description=description,
-                )
-            )
 
     db.session.commit()

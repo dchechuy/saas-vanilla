@@ -157,6 +157,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
+  // ── "Show Inactive" toggle for External APIs table ───────────────
+  window.filterInactiveApis = () => {
+    const show = document.getElementById("show-inactive-apis")?.checked;
+    document.querySelectorAll("#apis-tbody tr[data-active]").forEach((row) => {
+      if (row.dataset.active === "false") row.style.display = show ? "" : "none";
+    });
+  };
+
   // UTC → local time conversion for elements with class "local-time" and data-utc attribute.
   // Matches the skunkBOX convention. Server always stores UTC; browser renders in user's timezone.
   document.querySelectorAll(".local-time[data-utc]").forEach((el) => {

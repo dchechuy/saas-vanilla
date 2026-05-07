@@ -5,6 +5,7 @@ from flask import Blueprint, current_app, flash, jsonify, redirect, render_templ
 from flask_login import current_user, login_required
 
 from ..access import permission_required, user_has_access
+from ..activity_logger import log_activity
 from ..crypto import encrypt_value
 from ..extensions import db
 from ..models import AiAgent, Attribute, Integration, LlmModel
@@ -94,6 +95,7 @@ def add_llm_model():
     )
     db.session.add(model)
     db.session.commit()
+    log_activity(current_user, "llm.created", page="System Config")
     flash(f"Model '{name}' added.", "success")
     return _redirect_to_system_config()
 
@@ -130,6 +132,7 @@ def update_llm_model(model_id):
         model.api_key_encrypted = encrypt_value(api_key)
 
     db.session.commit()
+    log_activity(current_user, "llm.updated", page="System Config")
     flash(f"Model '{model.name}' updated.", "success")
     return _redirect_to_system_config()
 
@@ -142,6 +145,7 @@ def toggle_llm_model(model_id):
     model.is_active = not model.is_active
     db.session.commit()
     state = "activated" if model.is_active else "deactivated"
+    log_activity(current_user, f"llm.{state}", page="System Config")
     flash(f"Model '{model.name}' {state}.", "success")
     return _redirect_to_system_config("integrations")
 
@@ -180,6 +184,7 @@ def batch_save_attributes():
 
     try:
         db.session.commit()
+        log_activity(current_user, "attribute.saved", page="System Config")
         return jsonify({"success": True})
     except Exception as exc:
         db.session.rollback()
@@ -195,16 +200,17 @@ def add_integration():
     category = request.form.get("category", "").strip()
     if not name or not provider or not category:
         flash("Integration name, provider, and category are required.", "error")
-        return _redirect_to_system_config()
+        return _redirect_to_system_config("apis")
 
     if Integration.query.filter_by(name=name).first():
         flash(f"Integration '{name}' already exists.", "error")
-        return _redirect_to_system_config()
+        return _redirect_to_system_config("apis")
 
     integration = Integration(
         name=name,
         provider=provider,
         category=category,
+        use_case=request.form.get("use_case", "AI Agents").strip() or "AI Agents",
         description=request.form.get("description", "").strip() or None,
         base_url=request.form.get("base_url", "").strip() or None,
         is_active=request.form.get("is_active", "1") == "1",
@@ -215,8 +221,9 @@ def add_integration():
 
     db.session.add(integration)
     db.session.commit()
+    log_activity(current_user, "integration.created", page="System Config")
     flash(f"Integration '{integration.provider}' added.", "success")
-    return _redirect_to_system_config()
+    return _redirect_to_system_config("apis")
 
 
 @models_bp.route("/integrations/<int:integration_id>/save", methods=["POST"])
@@ -230,16 +237,17 @@ def save_integration(integration_id):
     category = request.form.get("category", "").strip()
     if not name or not provider or not category:
         flash("Integration name, provider, and category are required.", "error")
-        return _redirect_to_system_config()
+        return _redirect_to_system_config("apis")
 
     duplicate = Integration.query.filter(Integration.name == name, Integration.id != integration.id).first()
     if duplicate:
         flash(f"Integration '{name}' already exists.", "error")
-        return _redirect_to_system_config()
+        return _redirect_to_system_config("apis")
 
     integration.name = name
     integration.provider = provider
     integration.category = category
+    integration.use_case = request.form.get("use_case", "AI Agents").strip() or "AI Agents"
     integration.description = request.form.get("description", "").strip() or None
     integration.base_url = request.form.get("base_url", "").strip() or None
     integration.is_active = request.form.get("is_active") == "1"
@@ -249,8 +257,9 @@ def save_integration(integration_id):
         integration.api_key_encrypted = encrypt_value(api_key)
 
     db.session.commit()
+    log_activity(current_user, "integration.updated", page="System Config")
     flash(f"Integration '{integration.provider}' saved.", "success")
-    return _redirect_to_system_config()
+    return _redirect_to_system_config("apis")
 
 
 @models_bp.route("/agents/add", methods=["POST"])
@@ -280,6 +289,7 @@ def add_agent():
     )
     db.session.add(agent)
     db.session.commit()
+    log_activity(current_user, "agent.created", page="System Config")
     flash(f"Agent '{name}' added.", "success")
     return _redirect_to_system_config("agents")
 
@@ -311,6 +321,7 @@ def save_agent(agent_id):
         agent.avatar_filename = new_avatar
 
     db.session.commit()
+    log_activity(current_user, "agent.updated", page="System Config")
     flash(f"Agent '{agent.name}' saved.", "success")
     return _redirect_to_system_config("agents")
 
@@ -323,5 +334,6 @@ def toggle_agent(agent_id):
     agent.is_active = not agent.is_active
     db.session.commit()
     state = "activated" if agent.is_active else "deactivated"
+    log_activity(current_user, f"agent.{state}", page="System Config")
     flash(f"Agent '{agent.name}' {state}.", "success")
     return _redirect_to_system_config("agents")

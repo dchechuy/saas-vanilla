@@ -134,9 +134,16 @@
       <div>
         <h1 class="page-title">External APIs</h1>
       </div>
-      {% if has_access('integrations', 'edit') %}
-      <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addIntegrationModal">Add New</button>
-      {% endif %}
+      <div style="display:flex;align-items:center;gap:14px">
+        <label class="toggle-switch" title="Show Inactive Integrations">
+          <input type="checkbox" id="show-inactive-apis" onchange="filterInactiveApis()">
+          <span class="toggle-track"></span>
+          <span class="toggle-label">Show Inactive</span>
+        </label>
+        {% if has_access('integrations', 'edit') %}
+        <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addIntegrationModal">Add New</button>
+        {% endif %}
+      </div>
     </div>
 
     <div class="card">
@@ -148,6 +155,7 @@
               <tr>
                 <th>Name</th>
                 <th>Provider</th>
+                <th>Use Case</th>
                 <th>Category</th>
                 <th>Base URL</th>
                 <th>API Key</th>
@@ -155,9 +163,10 @@
                 {% if has_access('integrations', 'edit') %}<th class="w-1">Actions</th>{% endif %}
               </tr>
             </thead>
-            <tbody>
+            <tbody id="apis-tbody">
               {% for integration in integrations %}
-              <tr>
+              <tr data-active="{{ 'true' if integration.is_active else 'false' }}"
+                  {% if not integration.is_active %}style="display:none"{% endif %}>
                 <td>
                   <div>{{ integration.name }}</div>
                   {% if integration.description %}
@@ -165,6 +174,11 @@
                   {% endif %}
                 </td>
                 <td>{{ integration.provider }}</td>
+                <td>
+                  <span class="badge {% if integration.use_case == 'AI Agents' %}badge-active{% else %}badge-default{% endif %}">
+                    {{ integration.use_case }}
+                  </span>
+                </td>
                 <td>{{ integration.category }}</td>
                 <td class="text-secondary">{{ integration.base_url or '—' }}</td>
                 <td>
@@ -682,6 +696,14 @@
               <input type="text" name="category" required class="form-control">
             </div>
             <div class="col-md-6">
+              <label class="form-label">Use Case <span class="text-danger">*</span></label>
+              <select name="use_case" required class="form-select">
+                <option value="AI Agents" selected>AI Agents</option>
+                <option value="Documents">Documents</option>
+              </select>
+              <div class="form-hint">AI Agents keys are used for agent config. Documents keys are used for document collections.</div>
+            </div>
+            <div class="col-md-6">
               <label class="form-label">Base URL</label>
               <input type="text" name="base_url" class="form-control">
             </div>
@@ -732,6 +754,14 @@
             <div class="col-md-6">
               <label class="form-label">Category</label>
               <input type="text" name="category" value="{{ integration.category }}" required class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Use Case <span class="text-danger">*</span></label>
+              <select name="use_case" required class="form-select">
+                <option value="AI Agents" {% if integration.use_case == 'AI Agents' %}selected{% endif %}>AI Agents</option>
+                <option value="Documents" {% if integration.use_case == 'Documents' %}selected{% endif %}>Documents</option>
+              </select>
+              <div class="form-hint">AI Agents keys are used for agent config. Documents keys are used for document collections.</div>
             </div>
             <div class="col-md-6">
               <label class="form-label">Base URL</label>

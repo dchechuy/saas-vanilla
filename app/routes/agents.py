@@ -5,13 +5,41 @@ from flask import (Blueprint, abort, flash, jsonify, redirect,
 from flask_login import current_user, login_required
 
 from ..access import permission_required
+from ..activity_logger import log_activity
 from ..crypto import decrypt_value
 from ..extensions import db
-from ..models import AgentConversation, AgentMessage, AiAgent
+from sqlalchemy import func
+from ..models import AgentConversation, AgentMessage, AiAgent, Integration
 
 agents_bp = Blueprint("agents", __name__, url_prefix="/agents")
 
 _SKUNK_TIMEOUT = 30  # seconds
+_DOCS_PER_PAGE = 25
+
+
+def _get_docs_integration():
+    """Return the first active Documents integration, or None."""
+    return Integration.query.filter_by(use_case="Documents", is_active=True).first()
+
+
+def _call_skunkbox_get(integration, path: str, params: dict = None) -> dict:
+    """Generic GET to skunkBOX API. Returns JSON or raises."""
+    base_url = (integration.base_url or "").rstrip("/")
+    if base_url.endswith("/api/v1"):
+        base_url = base_url[: -len("/api/v1")]
+    if not base_url:
+        raise ValueError("Integration has no base URL configured.")
+    api_key = decrypt_value(integration.api_key_encrypted or "")
+    if not api_key:
+        raise ValueError("Integration has no API key configured.")
+    resp = http_requests.get(
+        f"{base_url}/api/v1/{path}",
+        params=params or {},
+        headers={"X-API-Key": api_key, "Accept": "application/json"},
+        timeout=_SKUNK_TIMEOUT,
+    )
+    resp.raise_for_status()
+    return resp.json()
 
 
 def _call_skunkbox(integration, skunkbox_agent_id: int,
@@ -55,7 +83,33 @@ def _call_skunkbox(integration, skunkbox_agent_id: int,
 @login_required
 @permission_required("agents", "view")
 def list_conversations():
+    # ── Auto-delete empty conversations (no messages sent) ──────────────────
+    has_msg_subq = db.session.query(AgentMessage.conversation_id).distinct()
+    (AgentConversation.query
+     .filter(
+         AgentConversation.user_id == current_user.id,
+         AgentConversation.id.notin_(has_msg_subq),
+     )
+     .delete(synchronize_session="fetch"))
+    db.session.commit()
+
+    # ── Active agents ordered by most recently used by this user ────────────
     ai_agents = AiAgent.query.filter_by(is_active=True).order_by(AiAgent.name).all()
+    last_used = dict(
+        db.session.query(
+            AgentConversation.ai_agent_id,
+            func.max(AgentConversation.updated_at),
+        )
+        .filter_by(user_id=current_user.id)
+        .group_by(AgentConversation.ai_agent_id)
+        .all()
+    )
+    ai_agents.sort(key=lambda a: (
+        last_used.get(a.id) is None,          # used agents first
+        -(last_used[a.id].timestamp() if last_used.get(a.id) else 0),
+        a.name.lower(),                        # then alpha
+    ))
+
     conversations = (
         AgentConversation.query
         .filter_by(user_id=current_user.id, is_archived=False)
@@ -99,6 +153,7 @@ def new_conversation():
     )
     db.session.add(conv)
     db.session.commit()
+    log_activity(current_user, "conversation.started", page="AI Agents")
     return redirect(url_for("agents.view_conversation", conversation_id=conv.id))
 
 
@@ -214,6 +269,87 @@ def send_message(conversation_id):
 # Archive a conversation
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Learning Center — document list + detail (reads from Documents integration)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@agents_bp.route("/learning-center")
+@login_required
+@permission_required("agents", "view")
+def learning_center():
+    page = request.args.get("page", 1, type=int)
+    integration = _get_docs_integration()
+    docs, total, total_pages, error = [], 0, 1, None
+
+    if integration:
+        try:
+            data = _call_skunkbox_get(integration, "documents", {
+                "page": page,
+                "per_page": _DOCS_PER_PAGE,
+            })
+            # Defensive: handle {documents:[...]}, {items:[...]}, {data:[...]}, or bare list
+            docs = (data.get("documents")
+                    or data.get("items")
+                    or data.get("data")
+                    or (data if isinstance(data, list) else []))
+            total = int(data.get("total") or data.get("count")
+                        or data.get("total_count") or len(docs))
+            total_pages = int(
+                data.get("pages") or data.get("total_pages")
+                or max(1, (total + _DOCS_PER_PAGE - 1) // _DOCS_PER_PAGE)
+            )
+        except Exception as exc:
+            error = str(exc)
+
+    return render_template(
+        "agents/learning_center.html",
+        docs=docs,
+        page=page,
+        per_page=_DOCS_PER_PAGE,
+        total=total,
+        total_pages=total_pages,
+        integration=integration,
+        error=error,
+        breadcrumbs=[
+            {"label": "Home", "url": url_for("main.dashboard")},
+            {"label": "AI Agents", "url": url_for("agents.list_conversations")},
+            {"label": "Learning Center", "url": None},
+        ],
+    )
+
+
+@agents_bp.route("/learning-center/<doc_id>")
+@login_required
+@permission_required("agents", "view")
+def learning_center_doc(doc_id):
+    integration = _get_docs_integration()
+    doc, error = None, None
+
+    if integration:
+        try:
+            data = _call_skunkbox_get(integration, f"documents/{doc_id}")
+            # Unwrap {document: {...}} wrapper if present
+            doc = data.get("document") or (data if isinstance(data, dict) else None)
+        except Exception as exc:
+            error = str(exc)
+
+    title = (doc.get("title") or doc.get("name") or doc.get("filename")
+             or f"Document {doc_id}") if doc else f"Document {doc_id}"
+    return render_template(
+        "agents/learning_center_detail.html",
+        doc=doc,
+        doc_id=doc_id,
+        integration=integration,
+        error=error,
+        breadcrumbs=[
+            {"label": "Home", "url": url_for("main.dashboard")},
+            {"label": "AI Agents", "url": url_for("agents.list_conversations")},
+            {"label": "Learning Center", "url": url_for("agents.learning_center")},
+            {"label": title, "url": None},
+        ],
+    )
+
+
 @agents_bp.route("/<int:conversation_id>/archive", methods=["POST"])
 @login_required
 @permission_required("agents", "view")
@@ -223,5 +359,6 @@ def archive_conversation(conversation_id):
         abort(403)
     conv.is_archived = True
     db.session.commit()
+    log_activity(current_user, "conversation.archived", page="AI Agents")
     flash("Conversation archived.", "success")
     return redirect(url_for("agents.list_conversations"))

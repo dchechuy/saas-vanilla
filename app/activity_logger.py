@@ -11,12 +11,34 @@ from flask import request as _flask_request
 
 # Map action strings to a display label for the Reporting UI
 ACTION_LABELS: dict[str, str] = {
-    "user.login":    "Logged In",
-    "user.logout":   "Logged Out",
-    "user.created":  "Created User",
-    "user.updated":  "Updated User",
-    "user.deleted":  "Deleted User",
-    "user.password_changed": "Changed Password",
+    # Auth
+    "user.login":              "Logged In",
+    "user.logout":             "Logged Out",
+    # User management
+    "user.created":            "Created User",
+    "user.updated":            "Updated User",
+    "user.deleted":            "Deleted User",
+    "user.activated":          "Activated User",
+    "user.deactivated":        "Deactivated User",
+    "user.password_changed":   "Changed Password",
+    # Conversations
+    "conversation.started":    "Started Conversation",
+    "conversation.archived":   "Archived Conversation",
+    # AI Agents config
+    "agent.created":           "Added AI Agent",
+    "agent.updated":           "Updated AI Agent",
+    "agent.activated":         "Activated AI Agent",
+    "agent.deactivated":       "Deactivated AI Agent",
+    # LLM Models config
+    "llm.created":             "Added LLM Model",
+    "llm.updated":             "Updated LLM Model",
+    "llm.activated":           "Activated LLM Model",
+    "llm.deactivated":         "Deactivated LLM Model",
+    # Integrations config
+    "integration.created":     "Added Integration",
+    "integration.updated":     "Updated Integration",
+    # Attributes config
+    "attribute.saved":         "Updated Attributes",
 }
 
 
