@@ -110,16 +110,18 @@ def list_conversations():
         a.name.lower(),                        # then alpha
     ))
 
-    conversations = (
-        AgentConversation.query
-        .filter_by(user_id=current_user.id, is_archived=False)
-        .order_by(AgentConversation.updated_at.desc())
-        .all()
-    )
+    view_all = request.args.get("view") == "all"
+
+    conv_q = AgentConversation.query.filter_by(is_archived=False)
+    if not view_all:
+        conv_q = conv_q.filter_by(user_id=current_user.id)
+    conversations = conv_q.order_by(AgentConversation.updated_at.desc()).all()
+
     return render_template(
         "agents/list.html",
         ai_agents=ai_agents,
         conversations=conversations,
+        view_all=view_all,
         breadcrumbs=[
             {"label": "Home", "url": url_for("main.dashboard")},
             {"label": "AI Agents", "url": url_for("agents.list_conversations")},

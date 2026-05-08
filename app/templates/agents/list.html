@@ -12,7 +12,25 @@
 <div class="sb-page-header">
   <div>
     <h1 class="page-title">Conversations</h1>
-    <p class="muted" style="margin:4px 0 0">Chat with your AI agents.</p>
+    <p class="muted" style="margin:4px 0 0">
+      {% if view_all %}Showing all team conversations.{% else %}Chat with your AI agents.{% endif %}
+    </p>
+  </div>
+  {# ── View All toggle ── #}
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:13px;color:var(--muted)">View All</span>
+    <a href="{{ url_for('agents.list_conversations') }}{% if not view_all %}?view=all{% endif %}"
+       style="display:inline-flex;align-items:center;text-decoration:none"
+       title="{{ 'Show only my conversations' if view_all else 'Show all team conversations' }}">
+      <div style="width:40px;height:22px;border-radius:11px;
+                  background:{{ 'var(--primary)' if view_all else 'var(--border)' }};
+                  position:relative;transition:background 0.2s;flex-shrink:0">
+        <div style="width:18px;height:18px;border-radius:50%;background:#fff;
+                    position:absolute;top:2px;
+                    left:{{ '20px' if view_all else '2px' }};
+                    transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></div>
+      </div>
+    </a>
   </div>
 </div>
 
@@ -61,12 +79,15 @@
         <tr style="cursor:pointer" onclick="window.location='{{ url_for('agents.view_conversation', conversation_id=conv.id) }}'">
           <td onclick="event.stopPropagation()">
             {% if conv.agent and conv.agent.avatar_filename %}
-            <img src="{{ url_for('static', filename='uploads/agent_avatars/' ~ conv.agent.avatar_filename) }}"
-                 style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid var(--border)">
+            <div style="width:40px;height:40px;border-radius:50%;overflow:hidden;flex-shrink:0;
+                        border:2px solid var(--border)">
+              <img src="{{ url_for('static', filename='uploads/agent_avatars/' ~ conv.agent.avatar_filename) }}"
+                   style="width:100%;height:100%;object-fit:cover;display:block">
+            </div>
             {% else %}
             <div style="width:40px;height:40px;border-radius:50%;background:var(--accent);
                         display:flex;align-items:center;justify-content:center;
-                        font-weight:700;font-size:16px;color:#fff">
+                        font-weight:700;font-size:16px;color:#fff;overflow:hidden">
               {{ conv.agent.name[0].upper() if conv.agent else '?' }}
             </div>
             {% endif %}
@@ -109,6 +130,7 @@
               <div class="overflow-dropdown" id="cmenu-{{ conv.id }}">
                 <a href="{{ url_for('agents.view_conversation', conversation_id=conv.id) }}"
                    class="overflow-item">Open</a>
+                {% if conv.user_id == current_user.id %}
                 <div style="border-top:1px solid var(--border);margin:4px 0"></div>
                 <form method="post" action="{{ url_for('agents.archive_conversation', conversation_id=conv.id) }}"
                       id="carchive-{{ conv.id }}" style="margin:0">
@@ -121,6 +143,7 @@
                             'btn-danger'
                           )">Archive</button>
                 </form>
+                {% endif %}
               </div>
             </div>
           </td>

@@ -41,6 +41,8 @@ ACTION_LABELS: dict[str, str] = {
     "attribute.saved":         "Updated Attributes",
     # Feature flags
     "flag.toggled":            "Toggled Feature Flag",
+    # Release notes
+    "release_notes.generated": "Generated Release Notes",
 }
 
 

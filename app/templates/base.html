@@ -102,12 +102,14 @@
         <span class="nav-icon">{{ icon('book') }}</span>
         <span class="nav-label">User Guides</span>
       </a>
+      {% if flag_system_overview %}
       <a href="{{ url_for('help.architecture') }}"
          class="{{ 'active' if request.endpoint in ['help.architecture', 'help.dependencies'] else '' }}"
          data-label="System Overview">
         <span class="nav-icon">{{ icon('brain') }}</span>
         <span class="nav-label">System Overview</span>
       </a>
+      {% endif %}
       {% endif %}
     </div>
   </nav>

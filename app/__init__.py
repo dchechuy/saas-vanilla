@@ -61,7 +61,7 @@ def create_app() -> Flask:
         """Make feature flag states available in every template as `flag_<key>`.
         Defaults all known flags to True when the table doesn't exist yet,
         so a pending migration never hides UI from users."""
-        _KNOWN_FLAGS = ["conversations", "learning_center", "ai_agents_section"]
+        _KNOWN_FLAGS = ["conversations", "learning_center", "ai_agents_section", "system_overview"]
         # Start with all flags ON — overwrite from DB once table exists
         flags = {f"flag_{k}": True for k in _KNOWN_FLAGS}
         try:
@@ -156,6 +156,7 @@ def _seed_defaults() -> None:
         ("conversations",    "Conversations",       "Show the Conversations page under AI Agents"),
         ("learning_center",  "Learning Center",     "Show the Learning Center page under AI Agents"),
         ("ai_agents_section","AI Agents Section",   "Show the AI Agents section in the left navigation menu"),
+        ("system_overview",  "System Overview",     "Show the System Overview section in the left navigation menu"),
     ]
     for key, label, desc in default_flags:
         if not FeatureFlag.query.filter_by(key=key).first():

@@ -1480,9 +1480,9 @@ textarea:focus,
   align-items: center;
   justify-content: center;
   font-weight: 700;
+  flex-shrink: 0;
   font-size: 48px;
   color: #fff;
-  flex-shrink: 0;
 }
 .agent-tile-body {
   padding: 12px 12px 14px;

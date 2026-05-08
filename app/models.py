@@ -129,8 +129,16 @@ class ReleaseNote(db.Model):
     version_patch = db.Column(db.Integer, nullable=False, default=0)
     version_string = db.Column(db.String(20), nullable=False)
     release_type = db.Column(db.String(20), nullable=False, default="minor")
-    title = db.Column(db.String(255), nullable=False)
-    summary_markdown = db.Column(db.Text, nullable=False)
+    # Legacy field kept for backward compatibility
+    title = db.Column(db.String(255), nullable=True)
+    summary_markdown = db.Column(db.Text, nullable=True)
+    # New fields (AI-generated pipeline)
+    codename = db.Column(db.String(80), nullable=True)           # e.g. "Emerald Wolverine" (major only)
+    raw_summary = db.Column(db.Text, nullable=True)              # changelog text fed to AI
+    content_html = db.Column(db.Text, nullable=True)             # AI-generated HTML content
+    status = db.Column(db.String(20), nullable=False, default="published")  # published | draft
+    published_at = db.Column(db.DateTime, nullable=True)
+    changelog_commit_hash = db.Column(db.String(40), nullable=True)  # git HEAD at generation time
     created_by_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
