@@ -39,6 +39,8 @@ ACTION_LABELS: dict[str, str] = {
     "integration.updated":     "Updated Integration",
     # Attributes config
     "attribute.saved":         "Updated Attributes",
+    # Feature flags
+    "flag.toggled":            "Toggled Feature Flag",
 }
 
 

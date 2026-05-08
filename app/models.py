@@ -234,6 +234,18 @@ class AgentMessage(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
 
+class FeatureFlag(db.Model):
+    """Application feature flags — toggled via System Config."""
+    __tablename__ = "feature_flag"
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(80), unique=True, nullable=False)   # e.g. "conversations"
+    label = db.Column(db.String(120), nullable=False)              # e.g. "Conversations"
+    description = db.Column(db.String(255), nullable=True)
+    is_enabled = db.Column(db.Boolean, nullable=False, default=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, onupdate=datetime.utcnow)
+
+
 def next_version(release_type: str, latest: ReleaseNote | None) -> tuple[int, int, int]:
     if latest is None:
         return (1, 0, 0)

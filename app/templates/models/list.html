@@ -5,7 +5,7 @@
 {% block content %}
 
 {# ── Top-level section tab strip ── #}
-{% set tab_count = (1 if can_view_agents else 0) + (1 if can_view_models else 0) + (1 if can_view_integrations else 0) + (1 if can_view_attributes else 0) %}
+{% set tab_count = (1 if can_view_agents else 0) + (1 if can_view_models else 0) + (1 if can_view_integrations else 0) + (1 if can_view_attributes else 0) + (1 if can_view_flags else 0) %}
 {% if tab_count > 1 %}
 <div class="tax-tabs" style="margin-bottom:24px">
   {% if can_view_agents %}
@@ -23,6 +23,10 @@
   {% if can_view_attributes %}
   <button class="tax-tab" id="top-tab-btn-attributes" type="button"
           onclick="switchTopTab('attributes')">Attributes</button>
+  {% endif %}
+  {% if can_view_flags %}
+  <button class="tax-tab" id="top-tab-btn-flags" type="button"
+          onclick="switchTopTab('flags')">Feature Flags</button>
   {% endif %}
 </div>
 {% endif %}
@@ -794,10 +798,111 @@
 </div>
 {% endfor %}
 {% endif %}
+
+{# ─────────────────────────────────────────────────────────────────────── #}
+{# Feature Flags tab                                                        #}
+{# ─────────────────────────────────────────────────────────────────────── #}
+{% if can_view_flags %}
+<div id="config-tab-flags" style="display:none">
+  <div class="sb-page-header">
+    <div>
+      <h1 class="page-title">Feature Flags</h1>
+      <p class="muted" style="margin:4px 0 0">Enable or disable features across the application.</p>
+    </div>
+  </div>
+
+  <div class="card" style="padding:0">
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table" style="margin:0">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Description</th>
+            <th style="text-align:center">Status</th>
+            <th style="text-align:right">Last Updated</th>
+            {% if has_access('models', 'edit') %}<th></th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for flag in feature_flags %}
+          <tr>
+            <td style="font-weight:600;color:var(--text)">{{ flag.label }}</td>
+            <td style="font-size:13px;color:var(--muted)">{{ flag.description or '—' }}</td>
+            <td style="text-align:center">
+              {% if flag.is_enabled %}
+              <span class="badge badge-active">ON</span>
+              {% else %}
+              <span class="badge badge-inactive">OFF</span>
+              {% endif %}
+            </td>
+            <td style="font-size:13px;color:var(--muted);text-align:right">
+              <span class="local-time" data-utc="{{ flag.updated_at.isoformat() }}" data-format="date">
+                {{ flag.updated_at.strftime('%b %d, %Y') }}
+              </span>
+            </td>
+            {% if has_access('models', 'edit') %}
+            <td style="text-align:right">
+              <button type="button" class="btn btn-secondary btn-sm"
+                      onclick="openFlagModal({{ flag.id }}, {{ flag.label | tojson }}, {{ flag.description | tojson }}, {{ flag.is_enabled | tojson }})">
+                Edit
+              </button>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Feature Flag edit modal ── #}
+{% if has_access('models', 'edit') %}
+<div id="flagModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);
+     align-items:center;justify-content:center;z-index:1050;padding:24px"
+     onclick="if(event.target===this)closeFlagModal()">
+  <div style="background:var(--panel);border-radius:12px;width:100%;max-width:440px;
+              box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+    <div style="padding:24px 28px 16px;border-bottom:1px solid var(--border)">
+      <h2 id="flagModalTitle" style="font-size:16px;font-weight:700;color:var(--text);margin:0"></h2>
+      <p  id="flagModalDesc"  style="font-size:13px;color:var(--muted);margin:6px 0 0"></p>
+    </div>
+    <form id="flagModalForm" method="post">
+      <div style="padding:20px 28px">
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    background:var(--bg);border:1px solid var(--border);border-radius:8px;
+                    padding:14px 18px">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text)">Enabled</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">Turn this feature on or off</div>
+          </div>
+          <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer">
+            <input type="checkbox" id="flagToggleInput" name="is_enabled" value="1"
+                   style="opacity:0;width:0;height:0;position:absolute">
+            <span id="flagToggleTrack"
+                  style="position:absolute;inset:0;border-radius:12px;
+                         background:var(--border);transition:background 0.2s"></span>
+            <span id="flagToggleThumb"
+                  style="position:absolute;top:3px;left:3px;width:18px;height:18px;
+                         border-radius:50%;background:#fff;transition:transform 0.2s;
+                         box-shadow:0 1px 3px rgba(0,0,0,.25)"></span>
+          </label>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;padding:0 28px 24px;flex-direction:row-reverse">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-secondary" onclick="closeFlagModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
 <script>
-const _TOP_SECTIONS   = ['agents', 'llm', 'apis', 'attributes'];
-const _TOP_HASH_MAP   = { agents: '#agents', llm: '#integrations', apis: '#apis', attributes: '#attributes' };
-const _TOP_LABEL_MAP  = { agents: 'AI Agents Config', llm: 'LLM Models', apis: 'External APIs', attributes: 'Attributes' };
+const _TOP_SECTIONS   = ['agents', 'llm', 'apis', 'attributes', 'flags'];
+const _TOP_HASH_MAP   = { agents: '#agents', llm: '#integrations', apis: '#apis', attributes: '#attributes', flags: '#flags' };
+const _TOP_LABEL_MAP  = { agents: 'AI Agents Config', llm: 'LLM Models', apis: 'External APIs', attributes: 'Attributes', flags: 'Feature Flags' };
 
 function switchTopTab(section) {
   _TOP_SECTIONS.forEach(s => {
@@ -815,7 +920,7 @@ function applyHash() {
   const hash = window.location.hash;
 
   // Map hash → section id
-  const hashToSection = { '#agents': 'agents', '#integrations': 'llm', '#apis': 'apis', '#attributes': 'attributes' };
+  const hashToSection = { '#agents': 'agents', '#integrations': 'llm', '#apis': 'apis', '#attributes': 'attributes', '#flags': 'flags' };
   let activeSection = hashToSection[hash];
 
   // Default to first rendered tab when no matching hash
@@ -992,5 +1097,44 @@ function confirmNewGroup() {
   closeNewGroupModal();
   openAttrModal(category);
 }
+
+/* ═══════════════════════════════════════════════════
+   Feature Flags modal
+═══════════════════════════════════════════════════ */
+function openFlagModal(flagId, label, description, isEnabled) {
+  document.getElementById('flagModalTitle').textContent = label;
+  document.getElementById('flagModalDesc').textContent  = description || '';
+  document.getElementById('flagModalForm').action = '/models/flags/' + flagId + '/toggle';
+
+  const input = document.getElementById('flagToggleInput');
+  const track = document.getElementById('flagToggleTrack');
+  const thumb = document.getElementById('flagToggleThumb');
+  if (input) {
+    input.checked = isEnabled;
+    _updateToggleUI(isEnabled, track, thumb);
+    input.addEventListener('change', function() {
+      _updateToggleUI(this.checked, track, thumb);
+    });
+  }
+
+  const modal = document.getElementById('flagModal');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function _updateToggleUI(on, track, thumb) {
+  if (!track || !thumb) return;
+  track.style.background = on ? 'var(--accent)' : 'var(--border)';
+  thumb.style.transform  = on ? 'translateX(20px)' : 'translateX(0)';
+}
+
+function closeFlagModal() {
+  document.getElementById('flagModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeFlagModal();
+});
 </script>
 {% endblock %}

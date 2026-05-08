@@ -1,7 +1,7 @@
 import uuid
 import requests as http_requests
-from flask import (Blueprint, abort, flash, jsonify, redirect,
-                   render_template, request, url_for)
+from flask import (Blueprint, Response, abort, flash, jsonify, redirect,
+                   render_template, request, stream_with_context, url_for)
 from flask_login import current_user, login_required
 
 from ..access import permission_required
@@ -348,6 +348,58 @@ def learning_center_doc(doc_id):
             {"label": title, "url": None},
         ],
     )
+
+
+@agents_bp.route("/learning-center/<doc_id>/file")
+@login_required
+@permission_required("agents", "view")
+def learning_center_file(doc_id):
+    """Proxy the raw file from skunkBOX so the browser can display it inline.
+    Tries several common download URL patterns in order."""
+    integration = _get_docs_integration()
+    if not integration:
+        return _proxy_error("No Documents integration configured.")
+    base_url = (integration.base_url or "").rstrip("/")
+    if base_url.endswith("/api/v1"):
+        base_url = base_url[: -len("/api/v1")]
+    api_key = decrypt_value(integration.api_key_encrypted or "")
+    if not api_key:
+        return _proxy_error("Integration has no API key configured.")
+
+    # Try common skunkBOX download endpoint patterns in order
+    version = request.args.get("version", "1")
+    candidates = [
+        f"{base_url}/api/v1/documents/{doc_id}/download",
+        f"{base_url}/api/v1/documents/{doc_id}/versions/{version}/download",
+        f"{base_url}/api/v1/documents/{doc_id}/file",
+        f"{base_url}/api/v1/documents/{doc_id}/content",
+    ]
+    headers = {"X-API-Key": api_key}
+    last_err = "All download endpoints returned errors."
+    for url in candidates:
+        try:
+            resp = http_requests.get(url, headers=headers, timeout=60, stream=True)
+            if resp.status_code == 200:
+                content_type = resp.headers.get("Content-Type", "application/pdf")
+                disposition = resp.headers.get("Content-Disposition", "inline")
+                return Response(
+                    stream_with_context(resp.iter_content(chunk_size=8192)),
+                    content_type=content_type,
+                    headers={"Content-Disposition": disposition},
+                )
+            last_err = f"{url} → HTTP {resp.status_code}"
+        except Exception as exc:
+            last_err = f"{url} → {exc}"
+
+    return _proxy_error(last_err)
+
+
+def _proxy_error(message: str):
+    """Return a minimal HTML page that displays an error inside the preview iframe."""
+    html = f"""<!DOCTYPE html><html><body style="margin:40px;font-family:sans-serif;color:#666">
+    <p style="font-size:14px">⚠ Could not load preview: {message}</p>
+    </body></html>"""
+    return Response(html, status=502, content_type="text/html")
 
 
 @agents_bp.route("/<int:conversation_id>/archive", methods=["POST"])

@@ -8,7 +8,7 @@ from ..access import permission_required, user_has_access
 from ..activity_logger import log_activity
 from ..crypto import encrypt_value
 from ..extensions import db
-from ..models import AiAgent, Attribute, Integration, LlmModel
+from ..models import AiAgent, Attribute, FeatureFlag, Integration, LlmModel
 
 _ALLOWED_IMG_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
@@ -38,6 +38,7 @@ def list_models():
     can_view_attributes = user_has_access("attributes", "view")
     can_view_integrations = user_has_access("integrations", "view")
     can_view_agents = user_has_access("agents", "view")
+    can_view_flags = user_has_access("models", "view")  # same permission gate as LLM Models
 
     if not any([can_view_models, can_view_attributes, can_view_integrations, can_view_agents]):
         flash("You do not have permission to access this page.", "error")
@@ -54,16 +55,30 @@ def list_models():
         integrations=all_integrations if can_view_integrations else [],
         ai_agents=AiAgent.query.order_by(AiAgent.name).all() if can_view_agents else [],
         all_integrations=all_integrations,  # for agent add/edit modals
+        feature_flags=FeatureFlag.query.order_by(FeatureFlag.id).all() if can_view_flags else [],
         can_view_models=can_view_models,
         can_view_attributes=can_view_attributes,
         can_view_integrations=can_view_integrations,
         can_view_agents=can_view_agents,
+        can_view_flags=can_view_flags,
         breadcrumbs=[
             {"label": "Home", "url": url_for("main.dashboard")},
             {"label": "System Config", "url": url_for("models.list_models")},
             {"label": "LLM Models", "url": None},
         ],
     )
+
+
+@models_bp.route("/flags/<int:flag_id>/toggle", methods=["POST"])
+@login_required
+@permission_required("models", "edit")
+def toggle_flag(flag_id):
+    flag = db.get_or_404(FeatureFlag, flag_id)
+    # Checkbox is present in form data when checked, absent when unchecked
+    flag.is_enabled = bool(request.form.get("is_enabled"))
+    db.session.commit()
+    log_activity(current_user, "flag.toggled", page="System Config")
+    return redirect(_redirect_to_system_config("flags").location)
 
 
 @models_bp.route("/llm/add", methods=["POST"])

@@ -60,11 +60,13 @@
               </td>
               <td>
                 <div class="btn-list justify-content-end flex-nowrap">
+                  {% if user.username != 'admin' %}
                   <a href="{{ url_for('users.edit_user', user_id=user.id) }}" class="btn btn-secondary btn-sm">Edit</a>
                   {% if user.id != current_user.id %}
                   <form method="post" action="{{ url_for('users.toggle_user', user_id=user.id) }}" style="margin:0">
                     <button type="submit" class="btn btn-secondary btn-sm">{{ 'Deactivate' if user.is_active else 'Activate' }}</button>
                   </form>
+                  {% endif %}
                   {% endif %}
                 </div>
               </td>

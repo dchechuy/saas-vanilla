@@ -76,7 +76,7 @@ a:hover {
 }
 
 .sidebar {
-  width: 306px;
+  width: 245px;
   min-height: 100vh;
   background: var(--sidebar);
   color: var(--sidebar-text);
@@ -93,8 +93,8 @@ a:hover {
 .sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px 28px 16px;
+  gap: 12px;
+  padding: 16px 20px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
   user-select: none;
@@ -103,16 +103,16 @@ a:hover {
 .sidebar-brand:hover { background: rgba(255,255,255,0.05); }
 
 .brand-mark {
-  width: 56px;
-  height: 56px;
-  border-radius: 18px;
+  width: 45px;
+  height: 45px;
+  border-radius: 14px;
   display: block;
   object-fit: cover;
   flex-shrink: 0;
 }
 
 .sidebar-brand-title {
-  font-size: 26px;
+  font-size: 21px;
   font-weight: 700;
   line-height: 1;
   color: #fff;

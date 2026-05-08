@@ -22,7 +22,7 @@ def create_app() -> Flask:
     login_manager.init_app(app)
 
     from .models import (AiAgent, AgentConversation, AgentMessage,  # noqa: F401
-                          Attribute, Integration, LlmModel,
+                          Attribute, FeatureFlag, Integration, LlmModel,
                           LlmRequestLog, UserActivityLog, ApiRequestLog,
                           Permission, ReleaseNote, Role, User)
 
@@ -56,6 +56,21 @@ def create_app() -> Flask:
     def inject_permissions():
         return {"has_access": user_has_access}
 
+    @app.context_processor
+    def inject_feature_flags():
+        """Make feature flag states available in every template as `flag_<key>`.
+        Defaults all known flags to True when the table doesn't exist yet,
+        so a pending migration never hides UI from users."""
+        _KNOWN_FLAGS = ["conversations", "learning_center", "ai_agents_section"]
+        # Start with all flags ON — overwrite from DB once table exists
+        flags = {f"flag_{k}": True for k in _KNOWN_FLAGS}
+        try:
+            for f in FeatureFlag.query.all():
+                flags[f"flag_{f.key}"] = f.is_enabled
+        except Exception:
+            pass  # DB not ready yet — keep the True defaults
+        return flags
+
     with app.app_context():
         _seed_defaults()
 
@@ -65,7 +80,7 @@ def create_app() -> Flask:
 def _seed_defaults() -> None:
     from sqlalchemy import inspect as sa_inspect
 
-    from .models import Attribute, Integration, Permission, Role, User
+    from .models import Attribute, FeatureFlag, Integration, Permission, Role, User
 
     # Guard: skip seeding if schema hasn't been created or migrated yet.
     # This prevents errors when the DB is stale (missing columns) or doesn't exist.
@@ -80,6 +95,8 @@ def _seed_defaults() -> None:
         integration_cols = {c["name"] for c in inspector.get_columns("integration")}
         if "use_case" not in integration_cols:
             return  # Schema is out of date — run `flask db upgrade` first
+    if not inspector.has_table("feature_flag"):
+        return  # Schema is out of date — run `flask db upgrade` first
 
     admin_role = Role.query.filter_by(name="admin").first()
     if not admin_role:
@@ -134,5 +151,14 @@ def _seed_defaults() -> None:
         exists = Attribute.query.filter_by(category=category, name=name).first()
         if not exists:
             db.session.add(Attribute(category=category, name=name, description=description))
+
+    default_flags = [
+        ("conversations",    "Conversations",       "Show the Conversations page under AI Agents"),
+        ("learning_center",  "Learning Center",     "Show the Learning Center page under AI Agents"),
+        ("ai_agents_section","AI Agents Section",   "Show the AI Agents section in the left navigation menu"),
+    ]
+    for key, label, desc in default_flags:
+        if not FeatureFlag.query.filter_by(key=key).first():
+            db.session.add(FeatureFlag(key=key, label=label, description=desc, is_enabled=True))
 
     db.session.commit()
