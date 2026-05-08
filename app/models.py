@@ -231,7 +231,19 @@ class AgentMessage(db.Model):
     conversation_id = db.Column(db.Integer, db.ForeignKey("agent_conversation.id"), nullable=False)
     role = db.Column(db.String(20), nullable=False)   # 'user' | 'assistant'
     content = db.Column(db.Text, nullable=False)
+    rag_sources = db.Column(db.Text, nullable=True)   # JSON list of source dicts (assistant only)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    @property
+    def rag_sources_list(self):
+        """Parse rag_sources JSON into a list of dicts, or empty list."""
+        import json
+        if not self.rag_sources:
+            return []
+        try:
+            return json.loads(self.rag_sources)
+        except Exception:
+            return []
 
 
 class FeatureFlag(db.Model):

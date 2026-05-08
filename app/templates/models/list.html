@@ -843,7 +843,7 @@
             {% if has_access('models', 'edit') %}
             <td style="text-align:right">
               <button type="button" class="btn btn-secondary btn-sm"
-                      onclick="openFlagModal({{ flag.id }}, {{ flag.label | tojson }}, {{ flag.description | tojson }}, {{ flag.is_enabled | tojson }})">
+                      onclick='openFlagModal({{ flag.id }}, {{ flag.label | tojson }}, {{ flag.description | tojson }}, {{ flag.is_enabled | tojson }})'>
                 Edit
               </button>
             </td>

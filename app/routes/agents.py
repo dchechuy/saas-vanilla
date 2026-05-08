@@ -169,12 +169,23 @@ def view_conversation(conversation_id):
     if conv.user_id != current_user.id:
         abort(403)
 
-    messages = conv.messages.order_by(AgentMessage.created_at).all()
+    raw_messages = conv.messages.order_by(AgentMessage.created_at).all()
+    messages_data = [
+        {
+            "id":          m.id,
+            "role":        m.role,
+            "content":     m.content,
+            "rag_sources": m.rag_sources_list,
+            "created_at":  m.created_at.isoformat(),
+        }
+        for m in raw_messages
+    ]
     return render_template(
         "agents/conversation.html",
         conv=conv,
         agent=conv.agent,
-        messages=messages,
+        messages=raw_messages,
+        messages_data=messages_data,
         breadcrumbs=[
             {"label": "Home", "url": url_for("main.dashboard")},
             {"label": "AI Agents", "url": url_for("agents.list_conversations")},
@@ -246,10 +257,16 @@ def send_message(conversation_id):
         or "[No response]"
     )
 
+    # Extract RAG sources if the API returned them
+    import json as _json
+    raw_sources = result.get("rag_sources") or []
+    rag_sources_json = _json.dumps(raw_sources) if raw_sources else None
+
     assistant_msg = AgentMessage(
         conversation_id=conv.id,
         role="assistant",
         content=reply_text,
+        rag_sources=rag_sources_json,
     )
     db.session.add(assistant_msg)
     db.session.commit()
@@ -261,6 +278,7 @@ def send_message(conversation_id):
             "id": assistant_msg.id,
             "content": reply_text,
             "created_at": assistant_msg.created_at.isoformat(),
+            "rag_sources": raw_sources,
         },
     })
 
@@ -381,11 +399,11 @@ def learning_center_file(doc_id):
             resp = http_requests.get(url, headers=headers, timeout=60, stream=True)
             if resp.status_code == 200:
                 content_type = resp.headers.get("Content-Type", "application/pdf")
-                disposition = resp.headers.get("Content-Disposition", "inline")
+                # Force inline display — never let the API's attachment header trigger a download
                 return Response(
                     stream_with_context(resp.iter_content(chunk_size=8192)),
                     content_type=content_type,
-                    headers={"Content-Disposition": disposition},
+                    headers={"Content-Disposition": "inline"},
                 )
             last_err = f"{url} → HTTP {resp.status_code}"
         except Exception as exc:
